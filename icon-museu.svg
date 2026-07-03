@@ -1,0 +1,30 @@
+<svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <link xmlns="" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,600&display=swap"/>
+  </defs>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,600&family=Montserrat:wght@800&display=swap');
+    .script { font-family:'Cormorant Garamond',serif; font-style:italic; font-weight:600; }
+    .block  { font-family:'Montserrat',sans-serif; font-weight:800; }
+  </style>
+
+  <!-- Fundo branco com moldura vermelha, cantos arredondados (igual ao pos.vac) -->
+  <rect x="26" y="26" width="972" height="972" rx="170" ry="170"
+        fill="#FFFFFF" stroke="#CC2027" stroke-width="26"/>
+
+  <!-- "Museu" — texto script, no lugar onde estava "pos" -->
+  <text x="512" y="330" text-anchor="middle" class="script"
+        font-size="180" fill="#111111">Museu</text>
+
+  <!-- "VAC" — VA em navy, C em vermelho, igual ao logo pos.vac -->
+  <text x="512" y="560" text-anchor="middle" class="block" font-size="220">
+    <tspan fill="#1D3C53">VA</tspan><tspan fill="#CC2027">C</tspan>
+  </text>
+
+  <!-- Três estrelas vermelhas -->
+  <g fill="#CC2027">
+    <polygon points="380,660 393,700 435,700 401,724 414,764 380,740 346,764 359,724 325,700 367,700"/>
+    <polygon points="512,660 525,700 567,700 533,724 546,764 512,740 478,764 491,724 457,700 499,700"/>
+    <polygon points="644,660 657,700 699,700 665,724 678,764 644,740 610,764 623,724 589,700 631,700"/>
+  </g>
+</svg>
