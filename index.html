@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#1D3C53">
 <title>Museu VAC</title>
+<link rel="manifest" href="./manifest.json">
+<link rel="icon" type="image/svg+xml" href="./icon-museu.svg">
+<link rel="icon" type="image/png" sizes="192x192" href="./icon-museu-192.png">
+<link rel="apple-touch-icon" href="./icon-museu-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -198,7 +202,7 @@
     background:var(--panel); border:1px solid var(--line); border-radius:12px;
     text-decoration:none; color:var(--ink);
   }
-  .menu-link-icon{font-size:20px;}
+  .menu-link-icon{width:38px; height:38px; border-radius:9px; object-fit:cover; flex-shrink:0;}
   .menu-link small{font-family:'IBM Plex Mono',monospace; font-size:10px; opacity:.55;}
   .story-box{
     margin-top:18px; padding:18px 18px 16px; background:rgba(0,0,0,0.03);
@@ -355,15 +359,15 @@
     <h2>Vintage Aero Club</h2>
     <div class="menu-links">
       <a href="https://www.vintageaeroclub.pt" target="_blank" class="menu-link">
-        <span class="menu-link-icon">🌐</span>
+        <img class="menu-link-icon" src="./logo-vac-color.png" alt="">
         <span><strong>Site</strong><br><small>www.vintageaeroclub.pt</small></span>
       </a>
       <a href="https://my.vintageaeroclub.pt" target="_blank" class="menu-link">
-        <span class="menu-link-icon">👥</span>
+        <img class="menu-link-icon" src="./icon-my192.png" alt="">
         <span><strong>Área Crew</strong><br><small>my.vintageaeroclub.pt</small></span>
       </a>
       <a href="https://pos.vintageaeroclub.pt" target="_blank" class="menu-link">
-        <span class="menu-link-icon">🧾</span>
+        <img class="menu-link-icon" src="./icon-pos192.png" alt="">
         <span><strong>VAC.Sales POS</strong><br><small>pos.vintageaeroclub.pt</small></span>
       </a>
     </div>
@@ -800,6 +804,12 @@ async function submitPiece() {
   initLoaderAnim();
   showLoader('A sincronizar', 'A carregar o acervo...');
   loadPieces().finally(() => hideLoader());
+
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js').catch(() => {});
+    });
+  }
 })();
 </script>
 </body>
