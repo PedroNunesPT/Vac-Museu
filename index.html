@@ -14,8 +14,8 @@
 </style>
 <script>
   // ---- EDITAR ANTES DE PUBLICAR ----
-  const API_URL = 'https://script.google.com/macros/s/SEU_DEPLOYMENT_ID/exec';
-  const VAC_LOGO = 'https://pos.vintageaeroclub.pt/logo.jpg';
+  const API_URL = 'https://script.google.com/macros/s/AKfycbyU-MkMer4phoXycj77DvVQEj23g1oSMUNpCO0kHtegGckWHltPaxMrHdwIO-miB9CQOg/exec';
+  const VAC_LOGO = './logo-vac-color.png'; // ficheiro subido diretamente ao repo Vac-Museu
   const ANAC_LOGO = ''; // colocar URL do logo real da ANAC quando disponível
   const GOOGLE_CLIENT_ID = '363576677824-ivjutejofafic0hdu1bstqr3p9ir1m33.apps.googleusercontent.com';
 </script>
@@ -192,6 +192,14 @@
   .detail-thumb{width:100%; height:180px; border-radius:12px; object-fit:cover; margin-bottom:14px; background:var(--line);}
   .detail-row{display:flex; justify-content:space-between; font-size:13px; padding:8px 0; border-bottom:1px dashed var(--line);}
   .detail-row .k{opacity:.55; font-family:'IBM Plex Mono',monospace; font-size:10px; text-transform:uppercase;}
+  .menu-links{display:flex; flex-direction:column; gap:10px;}
+  .menu-link{
+    display:flex; align-items:center; gap:14px; padding:14px 16px;
+    background:var(--panel); border:1px solid var(--line); border-radius:12px;
+    text-decoration:none; color:var(--ink);
+  }
+  .menu-link-icon{font-size:20px;}
+  .menu-link small{font-family:'IBM Plex Mono',monospace; font-size:10px; opacity:.55;}
   .story-box{
     margin-top:18px; padding:18px 18px 16px; background:rgba(0,0,0,0.03);
     border-left:3px solid var(--accent); border-radius:0 10px 10px 0; position:relative;
@@ -273,7 +281,7 @@
           font-family="Montserrat,sans-serif" font-size="7" font-weight="600" letter-spacing="2">AERO CLUB</text>
     <!-- Real VAC logo — carrega por cima do SVG genérico -->
     <clipPath id="logoCircle"><circle cx="140" cy="140" r="43"/></clipPath>
-    <image id="loader-logo-img" href="https://pos.vintageaeroclub.pt/logo.jpg"
+    <image id="loader-logo-img" href="./logo-vac-color.png"
            x="97" y="97" width="86" height="86"
            clip-path="url(#logoCircle)"
            preserveAspectRatio="xMidYMid slice"/>
@@ -311,7 +319,7 @@
 
 
 <header>
-  <button class="menu-btn" onclick="openLogin()">☰</button>
+  <button class="menu-btn" onclick="openMenu()">☰</button>
   <div class="logo-circle" id="logoCircle"></div>
   <h1 id="siteTitle">Museu VAC</h1>
   <div class="sub" id="siteSub">Acervo Museológico</div>
@@ -337,6 +345,29 @@
   <div class="sheet" onclick="event.stopPropagation()">
     <button class="sheet-close" onclick="hide('detailOverlay')"></button>
     <div id="detailBody"></div>
+  </div>
+</div>
+
+<!-- MENU LATERAL (drawer hamburguer) -->
+<div class="overlay" id="menuOverlay" onclick="closeOverlay(event,'menuOverlay')">
+  <div class="sheet" onclick="event.stopPropagation()">
+    <button class="sheet-close" onclick="hide('menuOverlay')"></button>
+    <h2>Vintage Aero Club</h2>
+    <div class="menu-links">
+      <a href="https://www.vintageaeroclub.pt" target="_blank" class="menu-link">
+        <span class="menu-link-icon">🌐</span>
+        <span><strong>Site</strong><br><small>www.vintageaeroclub.pt</small></span>
+      </a>
+      <a href="https://my.vintageaeroclub.pt" target="_blank" class="menu-link">
+        <span class="menu-link-icon">👥</span>
+        <span><strong>Área Crew</strong><br><small>my.vintageaeroclub.pt</small></span>
+      </a>
+      <a href="https://pos.vintageaeroclub.pt" target="_blank" class="menu-link">
+        <span class="menu-link-icon">🧾</span>
+        <span><strong>VAC.Sales POS</strong><br><small>pos.vintageaeroclub.pt</small></span>
+      </a>
+    </div>
+    <button class="btn" style="margin-top:18px" onclick="hide('menuOverlay'); openLogin()">Gestão do acervo (login)</button>
   </div>
 </div>
 
@@ -575,6 +606,7 @@ function show(id){ document.getElementById(id).classList.add('show'); }
 function hide(id){ document.getElementById(id).classList.remove('show'); }
 function closeOverlay(e,id){ if(e.target.id===id) hide(id); }
 function openLogin(){ initGoogleSignIn(); show('loginOverlay'); }
+function openMenu(){ show('menuOverlay'); }
 
 /* ==============================================================
    LOGIN — Google Identity Services
