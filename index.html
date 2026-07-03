@@ -55,7 +55,7 @@
     color:var(--cream); font-size:20px; cursor:pointer;
   }
   .logo-circle{
-    width:56px; height:56px; border-radius:50%; border:3px solid var(--accent);
+    width:76px; height:76px; border-radius:50%; border:3px solid var(--accent);
     background:#fff; display:flex; align-items:center; justify-content:center;
     overflow:hidden; margin-bottom:10px;
   }
@@ -283,10 +283,11 @@
     <text x="172" y="153" text-anchor="middle" fill="#c0392b" font-size="13">★</text>
     <text x="140" y="164" text-anchor="middle" fill="#c9a84c"
           font-family="Montserrat,sans-serif" font-size="7" font-weight="600" letter-spacing="2">AERO CLUB</text>
-    <!-- Real VAC logo — carrega por cima do SVG genérico -->
-    <clipPath id="loaderLogoClip"><circle cx="140" cy="140" r="43"/></clipPath>
+    <!-- Real VAC logo — maior, com fundo branco atrás para nunca deixar ver o emblema genérico -->
+    <clipPath id="loaderLogoClip"><circle cx="140" cy="140" r="44"/></clipPath>
+    <circle cx="140" cy="140" r="44" fill="#ffffff"/>
     <image id="loader-logo-img" href="./logo-vac-color.png"
-           x="97" y="97" width="86" height="86"
+           x="92" y="92" width="96" height="96"
            clip-path="url(#loaderLogoClip)"
            preserveAspectRatio="xMidYMid slice"/>
   </g>
