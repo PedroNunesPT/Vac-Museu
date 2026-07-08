@@ -24,6 +24,7 @@
   const GOOGLE_CLIENT_ID = '363576677824-ivjutejofafic0hdu1bstqr3p9ir1m33.apps.googleusercontent.com';
 </script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
   :root{
     --navy:#1D3C53; --red:#CC2027; --cream:#F2EDE4; --green:#5F7A52;
@@ -54,6 +55,14 @@
     position:absolute; left:18px; top:22px; background:none; border:none;
     color:var(--cream); font-size:20px; cursor:pointer;
   }
+  .header-avatar{
+    position:absolute; right:18px; top:22px; width:32px; height:32px;
+    border-radius:50%; background:rgba(255,255,255,0.15); color:var(--cream);
+    display:flex; align-items:center; justify-content:center;
+    font-family:'IBM Plex Mono',monospace; font-size:12px; font-weight:600;
+    overflow:hidden; cursor:pointer; border:2px solid rgba(255,255,255,0.35);
+  }
+  .header-avatar img{width:100%; height:100%; object-fit:cover;}
   .logo-circle{
     width:76px; height:76px; border-radius:50%; border:3px solid var(--accent);
     background:#fff; display:flex; align-items:center; justify-content:center;
@@ -75,7 +84,9 @@
   /* ---------- Partner tabs (só no domínio principal) ---------- */
   .partner-tabs{
     display:flex; gap:4px; padding:14px 16px 0; overflow-x:auto;
+    -webkit-overflow-scrolling:touch; scrollbar-width:none;
   }
+  .partner-tabs::-webkit-scrollbar{display:none;}
   .partner-tab{
     font-family:'IBM Plex Mono',monospace; font-size:11px; padding:8px 16px;
     border-radius:20px; cursor:pointer; white-space:nowrap; opacity:.6;
@@ -109,7 +120,11 @@
   }
 
   /* ---------- Gallery ---------- */
-  .filterbar{display:flex; gap:8px; padding:0 16px 12px; flex-wrap:wrap;}
+  .filterbar{
+    display:flex; gap:8px; padding:0 16px 12px; flex-wrap:wrap;
+    overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none;
+  }
+  .filterbar::-webkit-scrollbar{display:none;}
   .chip{
     font-family:'IBM Plex Mono',monospace; font-size:11px; padding:6px 12px;
     background:var(--panel); border:1px solid var(--line); border-radius:20px;
@@ -125,6 +140,7 @@
     background:var(--panel); border-radius:var(--radius); overflow:hidden;
     box-shadow:0 1px 4px rgba(0,0,0,0.06); cursor:pointer;
   }
+  .piece-card.inactive{ opacity:.5; filter:grayscale(60%); }
   .piece-card .thumb{
     height:110px; background:repeating-linear-gradient(45deg, var(--line) 0 1px, transparent 1px 12px), var(--bg);
     display:flex; align-items:center; justify-content:center; overflow:hidden;
@@ -163,6 +179,7 @@
   .sheet{
     background:var(--bg); width:100%; max-width:520px; max-height:88vh; overflow-y:auto;
     border-radius:20px 20px 0 0; padding:22px 20px 32px;
+    transition:transform .25s ease; touch-action:pan-y;
   }
   .sheet-close{
     display:block; margin:0 auto 14px; width:36px; height:4px; border-radius:4px;
@@ -196,6 +213,44 @@
   .detail-thumb{width:100%; height:180px; border-radius:12px; object-fit:cover; margin-bottom:14px; background:var(--line);}
   .detail-row{display:flex; justify-content:space-between; font-size:13px; padding:8px 0; border-bottom:1px dashed var(--line);}
   .detail-row .k{opacity:.55; font-family:'IBM Plex Mono',monospace; font-size:10px; text-transform:uppercase;}
+
+  /* ================= IMPRESSÃO — ficha A4 + etiqueta destacável ================= */
+  #printArea{ display:none; }
+  @media print{
+    body *{ visibility:hidden; }
+    #printArea, #printArea *{ visibility:visible; }
+    #printArea{ display:block; position:absolute; top:0; left:0; width:100%; }
+    @page{ size:A4; margin:14mm; }
+
+    .print-page{ font-family:'Inter',sans-serif; color:#1D3C53; }
+    .print-header{ text-align:center; border-bottom:2px solid #1D3C53; padding-bottom:10px; margin-bottom:14px; }
+    .print-museu{ font-family:'Cormorant Garamond',serif; font-weight:600; font-size:26px; }
+    .print-subtitle{ font-family:'IBM Plex Mono',monospace; font-size:9px; letter-spacing:.1em; text-transform:uppercase; opacity:.6; margin-top:2px; }
+    .print-oid{ font-family:'IBM Plex Mono',monospace; font-size:12px; color:#CC2027; font-weight:600; margin-bottom:2px; }
+    .print-nome{ font-family:'Cormorant Garamond',serif; font-size:22px; font-weight:600; margin-bottom:12px; }
+    .print-table{ width:100%; border-collapse:collapse; font-size:11px; margin-bottom:14px; }
+    .print-table td{ padding:5px 8px; border-bottom:1px solid #ddd; }
+    .print-table td.k{ font-family:'IBM Plex Mono',monospace; font-size:9px; text-transform:uppercase; letter-spacing:.05em; opacity:.6; width:140px; }
+    .print-section-label{ font-family:'IBM Plex Mono',monospace; font-size:9px; letter-spacing:.1em; text-transform:uppercase; opacity:.6; margin-bottom:4px; margin-top:10px; }
+    .print-text{ font-size:11px; line-height:1.5; }
+    .print-historia{ font-family:'Cormorant Garamond',serif; font-style:italic; font-size:14px; }
+    .print-signatures{ display:flex; justify-content:space-between; margin-top:24px; font-size:10px; }
+
+    .print-cutline{ text-align:center; font-size:11px; color:#999; margin:22px 0; white-space:nowrap; overflow:hidden; }
+
+    .print-label{
+      border:2px dashed #CC2027; border-radius:10px; padding:12px 16px;
+      display:flex; align-items:center; gap:14px; max-width:420px; margin:0 auto;
+    }
+    .print-label-hole{ width:10px; height:10px; border-radius:50%; border:1.5px dashed #999; flex-shrink:0; }
+    .print-label-info{ flex:1; }
+    .print-label-museu{ font-family:'IBM Plex Mono',monospace; font-size:8px; letter-spacing:.1em; text-transform:uppercase; opacity:.6; }
+    .print-label-oid{ font-family:'IBM Plex Mono',monospace; font-size:11px; color:#CC2027; font-weight:600; margin-top:2px; }
+    .print-label-nome{ font-family:'Cormorant Garamond',serif; font-size:15px; font-weight:600; margin-top:2px; }
+    .print-label-cat{ font-size:9px; opacity:.6; margin-top:1px; }
+    .print-label-qr{ width:64px; height:64px; flex-shrink:0; }
+    .print-label-hint{ text-align:center; font-size:9px; opacity:.5; margin-top:8px; font-family:'IBM Plex Mono',monospace; }
+  }
   .menu-links{display:flex; flex-direction:column; gap:10px;}
   .menu-link{
     display:flex; align-items:center; gap:14px; padding:14px 16px;
@@ -203,6 +258,21 @@
     text-decoration:none; color:var(--ink);
   }
   .menu-link-icon{width:38px; height:38px; border-radius:9px; object-fit:cover; flex-shrink:0;}
+  .menu-session{
+    display:flex; align-items:center; gap:12px; padding:12px 14px;
+    background:var(--panel); border:1px solid var(--line); border-radius:12px;
+    margin-bottom:16px;
+  }
+  .menu-session img, .menu-session .initial{
+    width:44px; height:44px; border-radius:50%; object-fit:cover;
+    border:2px solid var(--accent); flex-shrink:0;
+  }
+  .menu-session .initial{
+    background:var(--ink); color:var(--bg); display:flex; align-items:center;
+    justify-content:center; font-family:'Cormorant Garamond',serif; font-size:20px; font-weight:600;
+  }
+  .menu-session .name{font-weight:600; font-size:14px;}
+  .menu-session .email{font-family:'IBM Plex Mono',monospace; font-size:10px; opacity:.6;}
   .menu-link small{font-family:'IBM Plex Mono',monospace; font-size:10px; opacity:.55;}
   .story-box{
     margin-top:18px; padding:18px 18px 16px; background:rgba(0,0,0,0.03);
@@ -325,6 +395,7 @@
 
 <header>
   <button class="menu-btn" onclick="openMenu()">☰</button>
+  <div class="header-avatar" id="headerAvatar" onclick="openMenu()" style="display:none"></div>
   <div class="logo-circle" id="logoCircle"></div>
   <h1 id="siteTitle">Museu VAC</h1>
   <div class="sub" id="siteSub">Acervo Museológico</div>
@@ -353,11 +424,26 @@
   </div>
 </div>
 
+<!-- OPÇÕES DE PDF -->
+<div class="overlay" id="printOptionsOverlay" onclick="closeOverlay(event,'printOptionsOverlay')">
+  <div class="sheet" onclick="event.stopPropagation()">
+    <button class="sheet-close" onclick="hide('printOptionsOverlay')"></button>
+    <h2>Ficha + Etiqueta</h2>
+    <p style="font-size:13px; opacity:.7; margin-bottom:16px">A gerar PDF...</p>
+    <div id="printOptionsButtons" style="display:none; flex-direction:column; gap:10px">
+      <button class="btn accent" onclick="pdfAction('download')">📥 Descarregar PDF</button>
+      <button class="btn" onclick="pdfAction('share')">📤 Partilhar / Enviar por email</button>
+      <button class="btn" onclick="pdfAction('print')">🖨 Imprimir</button>
+    </div>
+  </div>
+</div>
+
 <!-- MENU LATERAL (drawer hamburguer) -->
 <div class="overlay" id="menuOverlay" onclick="closeOverlay(event,'menuOverlay')">
   <div class="sheet" onclick="event.stopPropagation()">
     <button class="sheet-close" onclick="hide('menuOverlay')"></button>
     <h2>Vintage Aero Club</h2>
+    <div id="menuSessionBox"></div>
     <div class="menu-links">
       <a href="https://www.vintageaeroclub.pt" target="_blank" class="menu-link">
         <img class="menu-link-icon" src="./logo-vac-color.png" alt="">
@@ -372,7 +458,8 @@
         <span><strong>VAC.Sales POS</strong><br><small>pos.vintageaeroclub.pt</small></span>
       </a>
     </div>
-    <button class="btn" style="margin-top:18px" onclick="hide('menuOverlay'); openLogin()">Gestão do acervo (login)</button>
+    <button class="btn" id="menuLoginBtn" style="margin-top:18px" onclick="hide('menuOverlay'); openLogin()">Gestão do acervo (login)</button>
+    <button class="btn" id="menuLogoutBtn" style="margin-top:10px; display:none; background:transparent; color:var(--red); border:1px solid var(--red)" onclick="logout()">Terminar sessão</button>
   </div>
 </div>
 
@@ -405,8 +492,9 @@
         <option>Documento</option><option>Outro</option>
       </select>
     </div>
-    <div class="field"><label>Parceiro proprietário</label>
-      <select id="f_partner"><option>VAC</option><option>ANAC</option></select>
+    <div class="field"><label>Parceiro / Grupo proprietário</label>
+      <input id="f_partner" list="partnerOptions" placeholder="VAC, ANAC, ou escreve um novo...">
+      <datalist id="partnerOptions"><option value="VAC"><option value="ANAC"></datalist>
     </div>
     <div class="field"><label>Materiais</label><input id="f_materiais"></div>
     <div class="field"><label>Medidas</label><input id="f_medidas"></div>
@@ -504,6 +592,13 @@ function renderPartnerTabs() {
       ${labels[p] || p}
     </div>
   `).join('');
+
+  // Atualiza as sugestões do campo "Parceiro" no formulário de registo
+  const dl = document.getElementById('partnerOptions');
+  if (dl) {
+    const known = new Set(['VAC', 'ANAC', ...allPieces.map(p => p.Partner).filter(Boolean)]);
+    dl.innerHTML = [...known].map(p => `<option value="${p}">`).join('');
+  }
 }
 
 function setPartnerFilter(p) {
@@ -513,8 +608,19 @@ function setPartnerFilter(p) {
   renderGrid();
 }
 
+let showInactive = false;
+
 function scoped() {
-  return currentPartnerFilter === 'ALL' ? allPieces : allPieces.filter(p => p.Partner === currentPartnerFilter);
+  let list = currentPartnerFilter === 'ALL' ? allPieces : allPieces.filter(p => p.Partner === currentPartnerFilter);
+  if (!showInactive) list = list.filter(p => p.EstadoRegisto !== 'Inativo');
+  return list;
+}
+
+function toggleShowInactive(){
+  showInactive = !showInactive;
+  renderCategoryFilter();
+  renderGrid();
+  renderStats();
 }
 
 /* ==============================================================
@@ -539,9 +645,13 @@ function renderStats() {
    ============================================================== */
 function renderCategoryFilter() {
   const cats = ['Todas', ...new Set(scoped().map(p => p.Categoria).filter(Boolean))];
-  document.getElementById('categoryFilter').innerHTML = cats.map(c => `
+  let html = cats.map(c => `
     <div class="chip ${c === currentCategoryFilter ? 'on' : ''}" onclick="setCategoryFilter('${c}')">${c}</div>
   `).join('');
+  if (session) {
+    html += `<div class="chip ${showInactive ? 'on' : ''}" style="border-color:var(--red); color:${showInactive ? '' : 'var(--red)'}" onclick="toggleShowInactive()">👁 Mostrar inativas</div>`;
+  }
+  document.getElementById('categoryFilter').innerHTML = html;
 }
 
 function setCategoryFilter(c) {
@@ -561,23 +671,217 @@ function renderGrid() {
   }
 
   grid.innerHTML = list.map(p => `
-    <div class="piece-card" onclick='openDetail(${JSON.stringify(p).replace(/'/g,"&apos;")})'>
+    <div class="piece-card ${p.EstadoRegisto === 'Inativo' ? 'inactive' : ''}" onclick='openDetail(${JSON.stringify(p).replace(/'/g,"&apos;")})'>
       <div class="thumb ${p.ImagemURL ? '' : 'empty'}">
         ${p.ImagemURL ? `<img src="${p.ImagemURL}" loading="lazy">` : 'sem foto'}
       </div>
       <div class="info">
-        <div class="oid mono">${p.ObjectID} ${p.Historia ? '<span title="Tem história">✦</span>' : ''}</div>
+        <div class="oid mono">${p.ObjectID} ${p.Historia ? '<span title="Tem história">✦</span>' : ''} ${p.Sinalizado ? '<span title="Sinalizado: ' + p.Sinalizado + '">🚩</span>' : ''}</div>
         <h3>${p.Nome || 'Sem nome'}</h3>
-        <div class="meta">${p.Categoria || ''} · ${p.Partner || ''}</div>
+        <div class="meta">${p.Categoria || ''} · ${p.Partner || ''} ${p.EstadoRegisto === 'Inativo' ? '· INATIVA' : ''}</div>
       </div>
     </div>
   `).join('');
 }
 
+// ==============================================================
+// GERAÇÃO DE PDF REAL (jsPDF) — ficha técnica + etiqueta com QR
+// ==============================================================
+let currentPdfDoc = null; // guarda o último PDF gerado para download/partilha/impressão
+
+async function urlToDataURL(url){
+  try {
+    const res = await fetch(url, { mode: 'cors' });
+    const blob = await res.blob();
+    return await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  } catch (e) {
+    return null; // se falhar (ex: sem CORS), o PDF sai sem essa imagem
+  }
+}
+
+async function openPrintOptions(){
+  const p = currentDetailPiece;
+  if (!p) return;
+  show('printOptionsOverlay');
+  document.getElementById('printOptionsButtons').style.display = 'none';
+  document.querySelector('#printOptionsOverlay p').textContent = 'A gerar PDF...';
+
+  currentPdfDoc = await buildFichaPdf(p);
+
+  document.querySelector('#printOptionsOverlay p').textContent =
+    'PDF pronto — escolhe o que queres fazer:';
+  document.getElementById('printOptionsButtons').style.display = 'flex';
+}
+
+async function buildFichaPdf(p){
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const navy = [29, 60, 83], red = [204, 32, 39];
+  const pageW = 210, margin = 16;
+  let y = 20;
+
+  // ---------- Cabeçalho ----------
+  doc.setFont('times', 'bolditalic'); doc.setFontSize(20); doc.setTextColor(...navy);
+  doc.text('Museu VAC', pageW / 2, y, { align: 'center' });
+  y += 6;
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(120);
+  doc.text('FICHA DE REGISTO DE ACERVO · NORMA OBJECT ID', pageW / 2, y, { align: 'center' });
+  y += 3;
+  doc.setDrawColor(...navy); doc.setLineWidth(0.6);
+  doc.line(margin, y, pageW - margin, y);
+  y += 8;
+
+  // ---------- ObjectID + Nome ----------
+  doc.setFont('courier', 'bold'); doc.setFontSize(10); doc.setTextColor(...red);
+  doc.text(p.ObjectID || '', margin, y);
+  y += 7;
+  doc.setFont('times', 'bold'); doc.setFontSize(16); doc.setTextColor(...navy);
+  doc.text(p.Nome || '(sem nome)', margin, y);
+  y += 8;
+
+  // ---------- Tabela de campos ----------
+  const fields = [
+    ['Parceiro', p.Partner], ['Categoria', p.Categoria], ['Materiais', p.Materiais],
+    ['Medidas', p.Medidas], ['Marcas / N.º Série', p.Marcas],
+    ['Proveniência', p.Proveniencia], ['Estado', p.Estado],
+    ['Data Registo', p.DataRegisto], ['Registado por', p.RegistadoPor]
+  ];
+  doc.setFontSize(9);
+  fields.forEach(([label, val]) => {
+    doc.setFont('helvetica', 'bold'); doc.setTextColor(140);
+    doc.text(label.toUpperCase(), margin, y);
+    doc.setFont('helvetica', 'normal'); doc.setTextColor(40);
+    doc.text(String(val || '—'), margin + 45, y);
+    doc.setDrawColor(220); doc.setLineWidth(0.2);
+    doc.line(margin, y + 1.5, pageW - margin, y + 1.5);
+    y += 6;
+  });
+  y += 3;
+
+  // ---------- Descrição ----------
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(140);
+  doc.text('DESCRIÇÃO', margin, y); y += 4;
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(40);
+  const descLines = doc.splitTextToSize(p.Descricao || '(sem descrição)', pageW - margin * 2);
+  doc.text(descLines, margin, y);
+  y += descLines.length * 4.2 + 4;
+
+  // ---------- História (se houver) ----------
+  if (p.Historia) {
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(140);
+    doc.text('HISTÓRIA', margin, y); y += 4;
+    doc.setFont('times', 'italic'); doc.setFontSize(10.5); doc.setTextColor(40);
+    const histLines = doc.splitTextToSize(p.Historia, pageW - margin * 2);
+    doc.text(histLines, margin, y);
+    y += histLines.length * 4.6 + 4;
+  }
+
+  // ---------- Foto (se houver) ----------
+  if (p.ImagemURL) {
+    const imgData = await urlToDataURL(p.ImagemURL);
+    if (imgData) {
+      try {
+        const imgH = 45;
+        doc.addImage(imgData, 'JPEG', margin, y, 60, imgH, undefined, 'FAST');
+        y += imgH + 6;
+      } catch (e) { /* formato não suportado — ignora */ }
+    }
+  }
+
+  // ---------- Assinaturas ----------
+  y = Math.max(y, 245);
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(80);
+  doc.text('Verificado por: ________________________________', margin, y);
+  doc.text('Data: ____________', pageW - margin - 35, y);
+
+  // ---------- Linha picotada ----------
+  y = 258;
+  doc.setDrawColor(150); doc.setLineDash([1.2, 1.2], 0); doc.setLineWidth(0.4);
+  doc.line(margin, y, pageW - margin, y);
+  doc.setLineDash([], 0);
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(150);
+  doc.text('- - - CORTAR AQUI - - -', pageW / 2, y - 2, { align: 'center' });
+
+  // ---------- Etiqueta com QR ----------
+  const labelY = y + 6, labelH = 26, labelX = margin, labelW = pageW - margin * 2;
+  doc.setDrawColor(...red); doc.setLineDash([1.5, 1.5], 0); doc.setLineWidth(0.5);
+  doc.roundedRect(labelX, labelY, labelW, labelH, 3, 3);
+  doc.setLineDash([], 0);
+
+  // "furos" para o elástico
+  doc.setDrawColor(150);
+  doc.circle(labelX + 6, labelY + labelH / 2, 1.8);
+  doc.circle(labelX + labelW - 6, labelY + labelH / 2, 1.8);
+
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(6.5); doc.setTextColor(140);
+  doc.text('MUSEU VAC', labelX + 14, labelY + 7);
+  doc.setFont('courier', 'bold'); doc.setFontSize(9); doc.setTextColor(...red);
+  doc.text(p.ObjectID || '', labelX + 14, labelY + 12);
+  doc.setFont('times', 'bold'); doc.setFontSize(11); doc.setTextColor(...navy);
+  doc.text(p.Nome || '', labelX + 14, labelY + 18, { maxWidth: labelW - 60 });
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(100);
+  doc.text(p.Categoria || '', labelX + 14, labelY + 22);
+
+  const partnerHost = window.location.hostname;
+  const deepLink = `https://${partnerHost}/?peca=${encodeURIComponent(p.ObjectID)}`;
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=0&data=${encodeURIComponent(deepLink)}`;
+  const qrData = await urlToDataURL(qrUrl);
+  if (qrData) doc.addImage(qrData, 'PNG', labelX + labelW - 24, labelY + 3, 20, 20);
+
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(6.5); doc.setTextColor(150);
+  doc.text('Cortar, prender à peça com elástico + fita nos dois furos', pageW / 2, labelY + labelH + 5, { align: 'center' });
+
+  return doc;
+}
+
+function pdfAction(kind){
+  if (!currentPdfDoc) return;
+  const filename = `${currentDetailPiece.ObjectID}_ficha.pdf`;
+
+  if (kind === 'download') {
+    currentPdfDoc.save(filename);
+    return;
+  }
+  if (kind === 'print') {
+    currentPdfDoc.autoPrint();
+    window.open(currentPdfDoc.output('bloburl'), '_blank');
+    return;
+  }
+  if (kind === 'share') {
+    const blob = currentPdfDoc.output('blob');
+    const file = new File([blob], filename, { type: 'application/pdf' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      navigator.share({ files: [file], title: filename, text: `Ficha da peça ${currentDetailPiece.ObjectID}` })
+        .catch(() => {});
+    } else {
+      // Sem suporte a partilha de ficheiros (ex: desktop) — cai para download
+      currentPdfDoc.save(filename);
+      alert('O teu browser não suporta partilha direta — o PDF foi descarregado, já podes anexá-lo a um email.');
+    }
+  }
+}
+
+// Se a app abrir com ?peca=OBJECTID (ex: alguém a escanear a etiqueta),
+// abre automaticamente a ficha dessa peça assim que os dados carregarem
+function checkDeepLinkPeca_(){
+  const params = new URLSearchParams(window.location.search);
+  const oid = params.get('peca');
+  if (!oid) return;
+  const match = allPieces.find(p => p.ObjectID === oid);
+  if (match) openDetail(match);
+}
+
 function openDetail(p) {
+  currentDetailPiece = p;
+  const isInactive = p.EstadoRegisto === 'Inativo';
   document.getElementById('detailBody').innerHTML = `
     ${p.ImagemURL ? `<img class="detail-thumb" src="${p.ImagemURL}">` : ''}
-    <div class="oid mono" style="margin-bottom:4px">${p.ObjectID}</div>
+    <div class="oid mono" style="margin-bottom:4px">${p.ObjectID} ${isInactive ? '<span style="color:var(--red)">· INATIVA</span>' : ''}</div>
     <h2>${p.Nome || ''}</h2>
     <div class="detail-row"><span class="k">Categoria</span><span>${p.Categoria || '—'}</span></div>
     <div class="detail-row"><span class="k">Parceiro</span><span>${p.Partner || '—'}</span></div>
@@ -592,8 +896,72 @@ function openDetail(p) {
       <div class="story-label">A história desta peça</div>
       <p class="story-text">${p.Historia}</p>
     </div>` : ''}
+    ${p.Sinalizado ? `<div class="msg err" style="margin-top:12px">🚩 Sinalizado: ${p.Sinalizado}</div>` : ''}
+
+    <button class="btn" style="margin-top:18px" onclick="openPrintOptions()">🖨 Imprimir ficha + etiqueta</button>
+
+    ${session ? `
+    <div style="margin-top:18px; padding-top:14px; border-top:1px dashed var(--line)">
+      <div class="section-lbl" style="padding:0 0 8px">Gestão (só visível para membros)</div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap">
+        <button class="btn" style="flex:1; min-width:100px" onclick="flagPieceUi()">🚩 Sinalizar</button>
+        <button class="btn" style="flex:1; min-width:100px" onclick="togglePieceStatusUi()">${isInactive ? '▶ Reativar' : '⏸ Inativar'}</button>
+        <button class="btn accent" style="flex:1; min-width:100px" onclick="deletePieceUi()">🗑 Apagar</button>
+      </div>
+    </div>` : ''}
   `;
   show('detailOverlay');
+}
+
+/* ==============================================================
+   AÇÕES DE GESTÃO — sinalizar, inativar/reativar, apagar
+   ============================================================== */
+async function flagPieceUi(){
+  const nota = prompt('Nota de sinalização (motivo da atenção):', currentDetailPiece.Sinalizado || '');
+  if (nota === null) return;
+  try {
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'flagPiece', ...session, objectId: currentDetailPiece.ObjectID, nota })
+    });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error);
+    hide('detailOverlay');
+    loadPieces();
+  } catch (err) { alert('Erro: ' + err.message); }
+}
+
+async function togglePieceStatusUi(){
+  const isInactive = currentDetailPiece.EstadoRegisto === 'Inativo';
+  const confirmMsg = isInactive
+    ? 'Reativar esta peça? Volta a aparecer no acervo público.'
+    : 'Inativar esta peça? Deixa de aparecer no acervo público (não é apagada).';
+  if (!confirm(confirmMsg)) return;
+  try {
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'setPieceStatus', ...session, objectId: currentDetailPiece.ObjectID, ativo: isInactive })
+    });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error);
+    hide('detailOverlay');
+    loadPieces();
+  } catch (err) { alert('Erro: ' + err.message); }
+}
+
+async function deletePieceUi(){
+  if (!confirm('Apagar esta peça definitivamente? Esta ação não pode ser desfeita — considera "Inativar" em vez de apagar.')) return;
+  if (!confirm('Tens mesmo a certeza? Vai ser removida da Sheet para sempre.')) return;
+  try {
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'deletePiece', ...session, objectId: currentDetailPiece.ObjectID })
+    });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error);
+    hide('detailOverlay');
+    loadPieces();
+  } catch (err) { alert('Erro: ' + err.message); }
 }
 
 /* ==============================================================
@@ -611,7 +979,40 @@ function show(id){ document.getElementById(id).classList.add('show'); }
 function hide(id){ document.getElementById(id).classList.remove('show'); }
 function closeOverlay(e,id){ if(e.target.id===id) hide(id); }
 function openLogin(){ initGoogleSignIn(); show('loginOverlay'); }
-function openMenu(){ show('menuOverlay'); }
+function openMenu(){ renderMenuSession(); show('menuOverlay'); }
+
+function renderMenuSession(){
+  const box = document.getElementById('menuSessionBox');
+  const loginBtn = document.getElementById('menuLoginBtn');
+  const logoutBtn = document.getElementById('menuLogoutBtn');
+  if (!session) {
+    box.innerHTML = '';
+    loginBtn.style.display = 'block';
+    logoutBtn.style.display = 'none';
+    return;
+  }
+  const avatarHtml = session.picture
+    ? `<img src="${session.picture}" alt="">`
+    : `<div class="initial">${(session.name || session.email || '?').trim().charAt(0).toUpperCase()}</div>`;
+  box.innerHTML = `
+    <div class="menu-session">
+      ${avatarHtml}
+      <div>
+        <div class="name">${session.name || 'Membro VAC'}</div>
+        <div class="email">${session.email}</div>
+      </div>
+    </div>`;
+  loginBtn.style.display = 'none';
+  logoutBtn.style.display = 'block';
+}
+
+function logout(){
+  session = null;
+  localStorage.removeItem('vac_museu_session');
+  renderHeaderAvatar();
+  renderMenuSession();
+  hide('menuOverlay');
+}
 
 /* ==============================================================
    LOGIN — Google Identity Services
@@ -634,9 +1035,32 @@ function initGoogleSignIn() {
   googleInitDone = true;
 }
 
+// Decodifica o payload do JWT do Google no browser (igual ao pos.vac/my.vac)
+// só para obter nome/foto a mostrar na UI — a validação real acontece no Code.gs
+function decodeGoogleJWT_(credential) {
+  try {
+    const base64 = credential.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    const padded = base64 + '=='.slice(0, (4 - base64.length % 4) % 4);
+    return JSON.parse(atob(padded));
+  } catch (e) { return {}; }
+}
+
+function renderHeaderAvatar() {
+  const el = document.getElementById('headerAvatar');
+  if (!session) { el.style.display = 'none'; return; }
+  el.style.display = 'flex';
+  if (session.picture) {
+    el.innerHTML = `<img src="${session.picture}" alt="">`;
+  } else {
+    const initial = (session.name || session.email || '?').trim().charAt(0).toUpperCase();
+    el.textContent = initial;
+  }
+}
+
 async function handleCredentialResponse(response) {
   const msgEl = document.getElementById('loginMsg');
   msgEl.innerHTML = '';
+  const payload = decodeGoogleJWT_(response.credential);
   try {
     const res = await fetch(API_URL, {
       method: 'POST',
@@ -645,8 +1069,9 @@ async function handleCredentialResponse(response) {
     const data = await res.json();
     if (!data.ok) throw new Error(data.error);
 
-    session = { email: data.email, token: data.token };
+    session = { email: data.email, token: data.token, name: payload.name || '', picture: payload.picture || '' };
     localStorage.setItem('vac_museu_session', JSON.stringify(session));
+    renderHeaderAvatar();
     msgEl.innerHTML = `<div class="msg ok">Sessão iniciada como ${data.email}</div>`;
     setTimeout(() => { hide('loginOverlay'); show('formOverlay'); }, 600);
   } catch (err) {
@@ -796,15 +1221,51 @@ async function submitPiece() {
         }
 
 /* ==============================================================
-   INIT
+   SWIPE PARA FECHAR — arrastar de cima para baixo fecha o sheet,
+   tal como nos ecrãs nativos. Só ativa se o sheet já estiver no
+   topo do seu próprio scroll (não interfere com scroll interno).
    ============================================================== */
+function setupSwipeToClose(){
+  document.querySelectorAll('.overlay .sheet').forEach(sheet => {
+    let startY = 0, currentY = 0, dragging = false;
+    const overlay = sheet.parentElement;
+
+    sheet.addEventListener('touchstart', e => {
+      if (sheet.scrollTop > 0) { dragging = false; return; }
+      startY = e.touches[0].clientY;
+      dragging = true;
+      sheet.style.transition = 'none';
+    }, { passive: true });
+
+    sheet.addEventListener('touchmove', e => {
+      if (!dragging) return;
+      currentY = e.touches[0].clientY - startY;
+      if (currentY > 0) sheet.style.transform = `translateY(${currentY}px)`;
+    }, { passive: true });
+
+    sheet.addEventListener('touchend', () => {
+      if (!dragging) return;
+      dragging = false;
+      sheet.style.transition = 'transform .25s ease';
+      if (currentY > 100) {
+        sheet.style.transform = `translateY(100%)`;
+        setTimeout(() => { overlay.classList.remove('show'); sheet.style.transform = ''; }, 200);
+      } else {
+        sheet.style.transform = '';
+      }
+      currentY = 0;
+    });
+  });
+}
 (function init() {
   lockedPartner = detectPartner();
   applyTheme(lockedPartner || 'VAC');
   if (lockedPartner) currentPartnerFilter = lockedPartner;
   initLoaderAnim();
+  renderHeaderAvatar();
+  setupSwipeToClose();
   showLoader('A sincronizar', 'A carregar o acervo...');
-  loadPieces().finally(() => hideLoader());
+  loadPieces().finally(() => { hideLoader(); checkDeepLinkPeca_(); });
 
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
@@ -813,5 +1274,60 @@ async function submitPiece() {
   }
 })();
 </script>
+<!-- TEMPLATE DE IMPRESSÃO — ficha A4 + etiqueta destacável com QR -->
+<div id="printArea">
+  <div class="print-page">
+    <div class="print-header">
+      <div class="print-museu">MUSEU VAC</div>
+      <div class="print-subtitle">Ficha de Registo de Acervo · Norma Object ID</div>
+    </div>
+
+    <div class="print-oid" id="pf-oid"></div>
+    <div class="print-nome" id="pf-nome"></div>
+
+    <table class="print-table">
+      <tr><td class="k">Parceiro</td><td id="pf-partner"></td></tr>
+      <tr><td class="k">Categoria</td><td id="pf-categoria"></td></tr>
+      <tr><td class="k">Materiais</td><td id="pf-materiais"></td></tr>
+      <tr><td class="k">Medidas</td><td id="pf-medidas"></td></tr>
+      <tr><td class="k">Marcas / N.º Série</td><td id="pf-marcas"></td></tr>
+      <tr><td class="k">Proveniência</td><td id="pf-proveniencia"></td></tr>
+      <tr><td class="k">Estado</td><td id="pf-estado"></td></tr>
+      <tr><td class="k">Data Registo</td><td id="pf-data"></td></tr>
+      <tr><td class="k">Registado por</td><td id="pf-registadopor"></td></tr>
+    </table>
+
+    <div class="print-section-label">Descrição</div>
+    <div class="print-text" id="pf-descricao"></div>
+
+    <div id="pf-historia-wrap">
+      <div class="print-section-label">História</div>
+      <div class="print-text print-historia" id="pf-historia"></div>
+    </div>
+
+    <div class="print-signatures">
+      <div class="print-sig">Verificado por: ______________________</div>
+      <div class="print-sig">Data: __________</div>
+    </div>
+
+    <div class="print-cutline">
+      <span>✂ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -</span>
+    </div>
+
+    <div class="print-label">
+      <div class="print-label-hole"></div>
+      <div class="print-label-info">
+        <div class="print-label-museu">MUSEU VAC</div>
+        <div class="print-label-oid" id="pf-label-oid"></div>
+        <div class="print-label-nome" id="pf-label-nome"></div>
+        <div class="print-label-cat" id="pf-label-cat"></div>
+      </div>
+      <img class="print-label-qr" id="pf-qr" alt="QR">
+      <div class="print-label-hole"></div>
+    </div>
+    <div class="print-label-hint">Cortar, dobrar ao meio se necessário, e prender à peça com elástico + fita nos dois furos</div>
+  </div>
+</div>
+
 </body>
 </html>
