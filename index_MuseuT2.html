@@ -1,0 +1,1448 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#1D3C53">
+<title>Museu VAC</title>
+<link rel="manifest" href="./manifest.json">
+<link rel="icon" type="image/svg+xml" href="./icon-museu.svg">
+<link rel="icon" type="image/png" sizes="192x192" href="./icon-museu-192.png">
+<link rel="apple-touch-icon" href="./icon-museu-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ==============================================================
+   CONFIG — editar aqui para apontar para o teu Apps Script
+   ============================================================== */
+</style>
+<script>
+  // ---- EDITAR ANTES DE PUBLICAR ----
+  const API_URL = 'https://script.google.com/macros/s/AKfycbyU-MkMer4phoXycj77DvVQEj23g1oSMUNpCO0kHtegGckWHltPaxMrHdwIO-miB9CQOg/exec';
+  const VAC_LOGO = './logo-vac-color.png'; // ficheiro subido diretamente ao repo Vac-Museu
+  const ANAC_LOGO = ''; // colocar URL do logo real da ANAC quando disponível
+  const GOOGLE_CLIENT_ID = '363576677824-ivjutejofafic0hdu1bstqr3p9ir1m33.apps.googleusercontent.com';
+</script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  :root{
+    --navy:#1D3C53; --red:#CC2027; --cream:#F2EDE4; --green:#5F7A52;
+    --ink:var(--navy); --accent:var(--red); --bg:var(--cream);
+    --panel:#ffffff; --line:rgba(29,60,83,0.14); --radius:16px;
+  }
+  [data-theme="anac"]{
+    --ink:#0B3B60; --accent:#4A7FA8; --bg:#EEF1F5;
+    --line:rgba(11,59,96,0.16);
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    background:var(--bg); color:var(--ink); font-family:'Inter',sans-serif;
+    min-height:100vh; padding-bottom:78px; transition:background .3s;
+  }
+  .mono{font-family:'IBM Plex Mono',monospace;}
+  .serif{font-family:'Cormorant Garamond',serif;}
+  a{color:inherit;}
+
+  /* ---------- Header ---------- */
+  header{
+    background:var(--ink); color:var(--cream);
+    border-radius:0 0 28px 28px; padding:22px 20px 26px;
+    display:flex; flex-direction:column; align-items:center; text-align:center;
+    position:relative;
+  }
+  .menu-btn{
+    position:absolute; left:18px; top:22px; background:none; border:none;
+    color:var(--cream); font-size:20px; cursor:pointer;
+  }
+  .header-avatar{
+    position:absolute; right:18px; top:22px; width:32px; height:32px;
+    border-radius:50%; background:rgba(255,255,255,0.15); color:var(--cream);
+    display:flex; align-items:center; justify-content:center;
+    font-family:'IBM Plex Mono',monospace; font-size:12px; font-weight:600;
+    overflow:hidden; cursor:pointer; border:2px solid rgba(255,255,255,0.35);
+  }
+  .header-avatar img{width:100%; height:100%; object-fit:cover;}
+  .logo-circle{
+    width:76px; height:76px; border-radius:50%; border:3px solid var(--accent);
+    background:#fff; display:flex; align-items:center; justify-content:center;
+    overflow:hidden; margin-bottom:10px;
+  }
+  .logo-circle img{width:100%; height:100%; object-fit:cover;}
+  .logo-circle span{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink);}
+  header h1{font-family:'Cormorant Garamond',serif; font-weight:600; font-size:26px;}
+  header .sub{
+    font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:.12em;
+    text-transform:uppercase; opacity:.65; margin-top:2px;
+  }
+  .badge{
+    margin-top:12px; background:rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.25);
+    padding:5px 14px; border-radius:20px; font-family:'IBM Plex Mono',monospace;
+    font-size:10px; letter-spacing:.08em; text-transform:uppercase;
+  }
+
+  /* ---------- Partner tabs (só no domínio principal) ---------- */
+  .partner-tabs{
+    display:flex; gap:4px; padding:14px 16px 0; overflow-x:auto;
+    -webkit-overflow-scrolling:touch; scrollbar-width:none;
+  }
+  .partner-tabs::-webkit-scrollbar{display:none;}
+  .partner-tab{
+    font-family:'IBM Plex Mono',monospace; font-size:11px; padding:8px 16px;
+    border-radius:20px; cursor:pointer; white-space:nowrap; opacity:.6;
+    border:1px solid transparent;
+  }
+  .partner-tab.on{
+    background:var(--panel); opacity:1; border-color:var(--line); font-weight:600;
+    box-shadow:0 1px 3px rgba(0,0,0,0.06);
+  }
+
+  /* ---------- Stat cards ---------- */
+  .stats{
+    display:grid; grid-template-columns:1fr 1fr; gap:12px; padding:16px;
+  }
+  .stat-card{
+    background:var(--panel); border-radius:var(--radius); padding:18px 16px;
+    box-shadow:0 1px 4px rgba(0,0,0,0.06); text-align:center;
+  }
+  .stat-card .num{font-family:'Cormorant Garamond',serif; font-weight:600; font-size:36px;}
+  .stat-card .num.red{color:var(--red);}
+  .stat-card .num.green{color:var(--green);}
+  .stat-card .lbl{
+    font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:.08em;
+    text-transform:uppercase; opacity:.55; margin-top:2px;
+  }
+
+  /* ---------- Section label ---------- */
+  .section-lbl{
+    font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:.1em;
+    text-transform:uppercase; opacity:.55; padding:6px 16px 10px;
+  }
+
+  /* ---------- Gallery ---------- */
+  .filterbar{
+    display:flex; gap:8px; padding:0 16px 12px; flex-wrap:wrap;
+    overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none;
+  }
+  .filterbar::-webkit-scrollbar{display:none;}
+  .chip{
+    font-family:'IBM Plex Mono',monospace; font-size:11px; padding:6px 12px;
+    background:var(--panel); border:1px solid var(--line); border-radius:20px;
+    cursor:pointer; opacity:.7;
+  }
+  .chip.on{background:var(--ink); color:var(--bg); opacity:1; border-color:var(--ink);}
+
+  .grid{
+    display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr));
+    gap:14px; padding:0 16px 24px;
+  }
+  .piece-card{
+    background:var(--panel); border-radius:var(--radius); overflow:hidden;
+    box-shadow:0 1px 4px rgba(0,0,0,0.06); cursor:pointer;
+  }
+  .piece-card.inactive{ opacity:.5; filter:grayscale(60%); }
+  .piece-card .thumb{
+    height:110px; background:repeating-linear-gradient(45deg, var(--line) 0 1px, transparent 1px 12px), var(--bg);
+    display:flex; align-items:center; justify-content:center; overflow:hidden;
+  }
+  .piece-card .thumb img{width:100%; height:100%; object-fit:cover;}
+  .piece-card .thumb.empty{font-family:'IBM Plex Mono',monospace; font-size:10px; opacity:.4;}
+  .piece-card .info{padding:10px 12px 14px;}
+  .piece-card .oid{font-family:'IBM Plex Mono',monospace; font-size:9px; color:var(--accent);}
+  .piece-card h3{font-family:'Cormorant Garamond',serif; font-size:16px; font-weight:600; margin-top:2px;}
+  .piece-card .meta{font-family:'IBM Plex Mono',monospace; font-size:9px; opacity:.5; margin-top:2px;}
+
+  .empty-state{
+    text-align:center; padding:50px 20px; opacity:.5; font-family:'IBM Plex Mono',monospace; font-size:12px;
+  }
+
+  /* ---------- Bottom nav ---------- */
+  nav.bottom{
+    position:fixed; bottom:0; left:0; right:0; background:var(--ink);
+    display:flex; padding:10px 0 14px; z-index:40;
+  }
+  nav.bottom button{
+    flex:1; background:none; border:none; color:rgba(242,237,228,0.55);
+    display:flex; flex-direction:column; align-items:center; gap:4px;
+    font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:.05em;
+    text-transform:uppercase; cursor:pointer; padding-bottom:6px; border-bottom:2px solid transparent;
+  }
+  nav.bottom button.on{color:#fff; border-bottom-color:var(--red);}
+  nav.bottom .icon{font-size:18px;}
+
+  /* ---------- Modal (detalhe / form / login) ---------- */
+  .overlay{
+    position:fixed; inset:0; background:rgba(11,20,28,0.55); z-index:50;
+    display:none; align-items:flex-end; justify-content:center;
+  }
+  .overlay.show{display:flex;}
+  .sheet{
+    background:var(--bg); width:100%; max-width:520px; max-height:88vh; overflow-y:auto;
+    border-radius:20px 20px 0 0; padding:22px 20px 32px;
+    transition:transform .25s ease; touch-action:pan-y;
+  }
+  .sheet-close{
+    display:block; margin:0 auto 14px; width:36px; height:4px; border-radius:4px;
+    background:var(--line); border:none;
+  }
+  .sheet h2{font-family:'Cormorant Garamond',serif; font-size:24px; margin-bottom:14px;}
+  .field{margin-bottom:14px;}
+  .field label{
+    display:block; font-family:'IBM Plex Mono',monospace; font-size:10px;
+    text-transform:uppercase; letter-spacing:.06em; opacity:.6; margin-bottom:5px;
+  }
+  .field input, .field select, .field textarea{
+    width:100%; border:1px solid var(--line); border-radius:8px; padding:10px 12px;
+    font-family:'Inter',sans-serif; font-size:13px; background:var(--panel); color:var(--ink);
+  }
+  .btn{
+    width:100%; padding:13px; border:none; border-radius:10px; cursor:pointer;
+    font-family:'IBM Plex Mono',monospace; font-size:12px; letter-spacing:.05em;
+    text-transform:uppercase; background:var(--ink); color:var(--bg);
+  }
+  .btn.accent{background:var(--red); color:#fff;}
+  .btn[disabled]{opacity:.5; cursor:default;}
+  .uploadbox{
+    border:1.5px dashed var(--line); border-radius:10px; padding:26px; text-align:center;
+    margin-bottom:14px; cursor:pointer; background:var(--panel);
+  }
+  .uploadbox img{max-width:100%; max-height:140px; border-radius:8px;}
+  .photo-strip{ display:flex; gap:8px; overflow-x:auto; padding-bottom:4px; margin-bottom:14px; }
+  .photo-strip:empty{ display:none; }
+  .photo-thumb{ position:relative; width:72px; height:72px; flex-shrink:0; border-radius:8px; overflow:hidden; }
+  .photo-thumb img{ width:100%; height:100%; object-fit:cover; }
+  .photo-thumb .rm{
+    position:absolute; top:2px; right:2px; width:18px; height:18px; border-radius:50%;
+    background:rgba(0,0,0,0.6); color:#fff; border:none; font-size:11px; line-height:18px;
+    text-align:center; cursor:pointer; padding:0;
+  }
+  .detail-gallery{ display:flex; gap:8px; overflow-x:auto; margin-bottom:14px; }
+  .detail-gallery img{ width:120px; height:120px; object-fit:cover; border-radius:10px; flex-shrink:0; }
+  .mgmt-row{
+    display:flex; align-items:center; gap:10px; padding:10px; margin-bottom:8px;
+    background:var(--panel); border-radius:10px; border:1px solid var(--line); cursor:pointer;
+  }
+  .mgmt-row.inactive{ opacity:.55; }
+  .mgmt-row .thumb{ width:44px; height:44px; border-radius:8px; object-fit:cover; background:var(--bg); flex-shrink:0; }
+  .mgmt-row .info{ flex:1; min-width:0; }
+  .mgmt-row .info .oid{ font-family:'IBM Plex Mono',monospace; font-size:9px; color:var(--accent); }
+  .mgmt-row .info .nome{ font-size:13px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .mgmt-row .actions{ display:flex; gap:4px; flex-shrink:0; }
+  .mgmt-row .actions button{
+    width:30px; height:30px; border-radius:6px; border:1px solid var(--line);
+    background:var(--bg); font-size:13px; cursor:pointer;
+  }
+  .msg{font-size:12px; margin-top:8px; padding:8px 10px; border-radius:6px;}
+  .msg.err{background:#fbe4e4; color:var(--red);}
+  .msg.ok{background:#e6f0e2; color:var(--green);}
+  .detail-thumb{width:100%; height:180px; border-radius:12px; object-fit:cover; margin-bottom:14px; background:var(--line);}
+  .detail-row{display:flex; justify-content:space-between; font-size:13px; padding:8px 0; border-bottom:1px dashed var(--line);}
+  .detail-row .k{opacity:.55; font-family:'IBM Plex Mono',monospace; font-size:10px; text-transform:uppercase;}
+
+  /* ================= IMPRESSÃO — ficha A4 + etiqueta destacável ================= */
+  #printArea{ display:none; }
+  @media print{
+    body *{ visibility:hidden; }
+    #printArea, #printArea *{ visibility:visible; }
+    #printArea{ display:block; position:absolute; top:0; left:0; width:100%; }
+    @page{ size:A4; margin:14mm; }
+
+    .print-page{ font-family:'Inter',sans-serif; color:#1D3C53; }
+    .print-header{ text-align:center; border-bottom:2px solid #1D3C53; padding-bottom:10px; margin-bottom:14px; }
+    .print-museu{ font-family:'Cormorant Garamond',serif; font-weight:600; font-size:26px; }
+    .print-subtitle{ font-family:'IBM Plex Mono',monospace; font-size:9px; letter-spacing:.1em; text-transform:uppercase; opacity:.6; margin-top:2px; }
+    .print-oid{ font-family:'IBM Plex Mono',monospace; font-size:12px; color:#CC2027; font-weight:600; margin-bottom:2px; }
+    .print-nome{ font-family:'Cormorant Garamond',serif; font-size:22px; font-weight:600; margin-bottom:12px; }
+    .print-table{ width:100%; border-collapse:collapse; font-size:11px; margin-bottom:14px; }
+    .print-table td{ padding:5px 8px; border-bottom:1px solid #ddd; }
+    .print-table td.k{ font-family:'IBM Plex Mono',monospace; font-size:9px; text-transform:uppercase; letter-spacing:.05em; opacity:.6; width:140px; }
+    .print-section-label{ font-family:'IBM Plex Mono',monospace; font-size:9px; letter-spacing:.1em; text-transform:uppercase; opacity:.6; margin-bottom:4px; margin-top:10px; }
+    .print-text{ font-size:11px; line-height:1.5; }
+    .print-historia{ font-family:'Cormorant Garamond',serif; font-style:italic; font-size:14px; }
+    .print-signatures{ display:flex; justify-content:space-between; margin-top:24px; font-size:10px; }
+
+    .print-cutline{ text-align:center; font-size:11px; color:#999; margin:22px 0; white-space:nowrap; overflow:hidden; }
+
+    .print-label{
+      border:2px dashed #CC2027; border-radius:10px; padding:12px 16px;
+      display:flex; align-items:center; gap:14px; max-width:420px; margin:0 auto;
+    }
+    .print-label-hole{ width:10px; height:10px; border-radius:50%; border:1.5px dashed #999; flex-shrink:0; }
+    .print-label-info{ flex:1; }
+    .print-label-museu{ font-family:'IBM Plex Mono',monospace; font-size:8px; letter-spacing:.1em; text-transform:uppercase; opacity:.6; }
+    .print-label-oid{ font-family:'IBM Plex Mono',monospace; font-size:11px; color:#CC2027; font-weight:600; margin-top:2px; }
+    .print-label-nome{ font-family:'Cormorant Garamond',serif; font-size:15px; font-weight:600; margin-top:2px; }
+    .print-label-cat{ font-size:9px; opacity:.6; margin-top:1px; }
+    .print-label-qr{ width:64px; height:64px; flex-shrink:0; }
+    .print-label-hint{ text-align:center; font-size:9px; opacity:.5; margin-top:8px; font-family:'IBM Plex Mono',monospace; }
+  }
+  .menu-links{display:flex; flex-direction:column; gap:10px;}
+  .menu-link{
+    display:flex; align-items:center; gap:14px; padding:14px 16px;
+    background:var(--panel); border:1px solid var(--line); border-radius:12px;
+    text-decoration:none; color:var(--ink);
+  }
+  .menu-link-icon{width:38px; height:38px; border-radius:9px; object-fit:cover; flex-shrink:0;}
+  .menu-session{
+    display:flex; align-items:center; gap:12px; padding:12px 14px;
+    background:var(--panel); border:1px solid var(--line); border-radius:12px;
+    margin-bottom:16px;
+  }
+  .menu-session img, .menu-session .initial{
+    width:44px; height:44px; border-radius:50%; object-fit:cover;
+    border:2px solid var(--accent); flex-shrink:0;
+  }
+  .menu-session .initial{
+    background:var(--ink); color:var(--bg); display:flex; align-items:center;
+    justify-content:center; font-family:'Cormorant Garamond',serif; font-size:20px; font-weight:600;
+  }
+  .menu-session .name{font-weight:600; font-size:14px;}
+  .menu-session .email{font-family:'IBM Plex Mono',monospace; font-size:10px; opacity:.6;}
+  .menu-link small{font-family:'IBM Plex Mono',monospace; font-size:10px; opacity:.55;}
+  .story-box{
+    margin-top:18px; padding:18px 18px 16px; background:rgba(0,0,0,0.03);
+    border-left:3px solid var(--accent); border-radius:0 10px 10px 0; position:relative;
+  }
+  .story-label{
+    font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:.08em;
+    text-transform:uppercase; color:var(--accent); margin-bottom:8px;
+  }
+  .story-text{
+    font-family:'Cormorant Garamond',serif; font-style:italic; font-size:17px;
+    line-height:1.55; color:var(--ink);
+  }
+
+/* ===== LOADER TIGER MOTH (importado do POS) ===== */
+        /* ===== Loader Tiger Moth (mesmo padrão visual do my.vac) ===== */
+        #vac-loader {
+          display: none; position: fixed; inset: 0;
+          background: rgba(20,14,8,.92); z-index: 9999;
+          align-items: center; justify-content: center;
+          flex-direction: column; backdrop-filter: blur(5px);
+        }
+        #vac-loader.show { display: flex; }
+        .loader-scene { position:relative; width:280px; height:280px; }
+        .loader-msg {
+          font-family:'Cormorant Garamond',serif;
+          font-size:1.4rem; font-weight:600; color:#F2EDE4;
+          letter-spacing:2px; margin-top:1.2rem; text-align:center;
+          text-shadow: 0 2px 8px rgba(0,0,0,.6);
+        }
+        .loader-sub {
+          font-family:'Montserrat',sans-serif;
+          font-size:.58rem; font-weight:600; color:rgba(242,237,228,.55);
+          letter-spacing:3px; text-transform:uppercase;
+          margin-top:.4rem; text-align:center;
+        }
+    </style>
+</style>
+</head>
+<body data-theme="vac">
+
+<!-- LOADER TIGER MOTH (importado do POS) -->
+    <!-- LOADER TIGER MOTH (orbita o logo VAC ao sincronizar) -->
+    <div id="vac-loader">
+  <div class="loader-scene">
+    <svg id="loader-svg" viewBox="0 0 280 280" xmlns="http://www.w3.org/2000/svg"
+     width="300" height="300" style="overflow:visible;">
+  <defs>
+    <radialGradient id="sg" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"   stop-color="#e8dcc8" stop-opacity="0.92"/>
+      <stop offset="42%"  stop-color="#c8b898" stop-opacity="0.52"/>
+      <stop offset="100%" stop-color="#a89070" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="glow" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="3" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="logoGlow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="0" stdDeviation="7" flood-color="#c9a84c" flood-opacity="0.2"/>
+    </filter>
+  </defs>
+
+  <!-- VAC LOGO — fixed centre -->
+  <g filter="url(#logoGlow)">
+    <circle cx="140" cy="140" r="45" fill="#1e3a5f" stroke="#c0392b" stroke-width="3.5"/>
+    <circle cx="140" cy="140" r="39" fill="none" stroke="rgba(200,184,154,.12)" stroke-width="1"/>
+    <text x="140" y="122" text-anchor="middle" fill="#f5f0e8"
+          font-family="Montserrat,sans-serif" font-size="8" font-weight="700" letter-spacing="2.5">VINTAGE</text>
+    <g transform="translate(112,127)" fill="#f5f0e8" opacity=".88">
+      <ellipse cx="28" cy="10" rx="26" ry="5"/>
+      <rect x="8" y="1" width="32" height="7" rx="2.5"/>
+      <rect x="11" y="9" width="26" height="5" rx="2" opacity=".78"/>
+      <polygon points="52,6 62,1 62,18 52,14"/>
+      <ellipse cx="4" cy="10" rx="5" ry="4"/>
+      <line x1="0" y1="3" x2="0" y2="17" stroke="#f5f0e8" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    <text x="108" y="153" text-anchor="middle" fill="#c0392b" font-size="13">★</text>
+    <text x="172" y="153" text-anchor="middle" fill="#c0392b" font-size="13">★</text>
+    <text x="140" y="164" text-anchor="middle" fill="#c9a84c"
+          font-family="Montserrat,sans-serif" font-size="7" font-weight="600" letter-spacing="2">AERO CLUB</text>
+    <!-- Real VAC logo — maior, com fundo branco atrás para nunca deixar ver o emblema genérico -->
+    <clipPath id="loaderLogoClip"><circle cx="140" cy="140" r="44"/></clipPath>
+    <circle cx="140" cy="140" r="44" fill="#ffffff"/>
+    <image id="loader-logo-img" href="./logo-vac-color.png"
+           x="92" y="92" width="96" height="96"
+           clip-path="url(#loaderLogoClip)"
+           preserveAspectRatio="xMidYMid slice"/>
+  </g>
+
+  <!-- SMOKE PUFFS — positioned by JS -->
+  <g id="s0"><circle r="3.5"  fill="url(#sg)"/></g>
+  <g id="s1"><circle r="5.5"  fill="url(#sg)"/></g>
+  <g id="s2"><circle r="8"    fill="url(#sg)"/></g>
+  <g id="s3"><circle r="11"   fill="url(#sg)"/></g>
+  <g id="s4"><circle r="14"   fill="url(#sg)"/></g>
+  <g id="s5"><circle r="16.5" fill="url(#sg)"/></g>
+  <g id="s6"><circle r="17"   fill="url(#sg)"/></g>
+  <g id="s7"><circle r="13"   fill="url(#sg)"/></g>
+  <g id="s8"><circle r="7"    fill="url(#sg)"/></g>
+
+  <!-- TIGER MOTH — inline SVG, scaled and centred at (0,0) -->
+  <!-- Original viewBox: 0 0 1024 434 — scale to ~110px wide -->
+  <g id="planeGroup" filter="url(#glow)">
+    <g id="planeShape">
+      <!-- Scale: 110/1024 = 0.1074, centred: translate(-1024/2*s, -434/2*s) -->
+      <g transform="scale(-0.107,-0.107) translate(-512,-217)">
+        <g fill="#c9a84c">
+<rect x="251" y="0" width="18" height="1"/><rect x="246" y="1" width="33" height="1"/><rect x="242" y="2" width="48" height="1"/><rect x="238" y="3" width="59" height="1"/><rect x="236" y="4" width="69" height="1"/><rect x="233" y="5" width="79" height="1"/><rect x="232" y="6" width="87" height="1"/><rect x="229" y="7" width="96" height="1"/><rect x="227" y="8" width="103" height="1"/><rect x="225" y="9" width="110" height="1"/><rect x="223" y="10" width="116" height="1"/><rect x="221" y="11" width="124" height="1"/><rect x="220" y="12" width="130" height="1"/><rect x="218" y="13" width="137" height="1"/><rect x="216" y="14" width="145" height="1"/><rect x="214" y="15" width="151" height="1"/><rect x="212" y="16" width="158" height="1"/><rect x="210" y="17" width="164" height="1"/><rect x="208" y="18" width="171" height="1"/><rect x="207" y="19" width="175" height="1"/><rect x="205" y="20" width="182" height="1"/><rect x="203" y="21" width="188" height="1"/><rect x="201" y="22" width="193" height="1"/><rect x="200" y="23" width="198" height="1"/><rect x="198" y="24" width="204" height="1"/><rect x="196" y="25" width="209" height="1"/><rect x="195" y="26" width="214" height="1"/><rect x="193" y="27" width="220" height="1"/><rect x="191" y="28" width="225" height="1"/><rect x="190" y="29" width="228" height="1"/><rect x="22" y="30" width="1" height="1"/><rect x="188" y="30" width="232" height="1"/><rect x="21" y="31" width="2" height="1"/><rect x="186" y="31" width="237" height="1"/><rect x="21" y="32" width="2" height="1"/><rect x="184" y="32" width="241" height="1"/><rect x="21" y="33" width="3" height="1"/><rect x="183" y="33" width="243" height="1"/><rect x="21" y="34" width="3" height="1"/><rect x="181" y="34" width="246" height="1"/><rect x="20" y="35" width="4" height="1"/><rect x="179" y="35" width="248" height="1"/><rect x="20" y="36" width="4" height="1"/><rect x="178" y="36" width="249" height="1"/><rect x="20" y="37" width="4" height="1"/><rect x="176" y="37" width="251" height="1"/><rect x="20" y="38" width="4" height="1"/><rect x="175" y="38" width="252" height="1"/><rect x="20" y="39" width="5" height="1"/><rect x="173" y="39" width="253" height="1"/><rect x="20" y="40" width="5" height="1"/><rect x="171" y="40" width="254" height="1"/><rect x="984" y="40" width="15" height="1"/><rect x="20" y="41" width="5" height="1"/><rect x="170" y="41" width="254" height="1"/><rect x="979" y="41" width="24" height="1"/><rect x="20" y="42" width="5" height="1"/><rect x="169" y="42" width="253" height="1"/><rect x="976" y="42" width="30" height="1"/><rect x="19" y="43" width="6" height="1"/><rect x="167" y="43" width="254" height="1"/><rect x="973" y="43" width="35" height="1"/><rect x="19" y="44" width="6" height="1"/><rect x="166" y="44" width="253" height="1"/><rect x="971" y="44" width="39" height="1"/><rect x="19" y="45" width="6" height="1"/><rect x="165" y="45" width="252" height="1"/><rect x="969" y="45" width="43" height="1"/><rect x="19" y="46" width="7" height="1"/><rect x="164" y="46" width="251" height="1"/><rect x="967" y="46" width="47" height="1"/><rect x="19" y="47" width="7" height="1"/><rect x="163" y="47" width="251" height="1"/><rect x="965" y="47" width="50" height="1"/><rect x="19" y="48" width="7" height="1"/><rect x="163" y="48" width="249" height="1"/><rect x="963" y="48" width="54" height="1"/><rect x="18" y="49" width="8" height="1"/><rect x="162" y="49" width="248" height="1"/><rect x="961" y="49" width="57" height="1"/><rect x="18" y="50" width="8" height="1"/><rect x="162" y="50" width="246" height="1"/><rect x="960" y="50" width="59" height="1"/><rect x="18" y="51" width="8" height="1"/><rect x="162" y="51" width="245" height="1"/><rect x="958" y="51" width="62" height="1"/><rect x="18" y="52" width="8" height="1"/><rect x="162" y="52" width="243" height="1"/><rect x="957" y="52" width="64" height="1"/><rect x="18" y="53" width="8" height="1"/><rect x="162" y="53" width="241" height="1"/><rect x="956" y="53" width="66" height="1"/><rect x="18" y="54" width="8" height="1"/><rect x="162" y="54" width="239" height="1"/><rect x="954" y="54" width="69" height="1"/><rect x="18" y="55" width="8" height="1"/><rect x="163" y="55" width="236" height="1"/><rect x="953" y="55" width="71" height="1"/><rect x="18" y="56" width="9" height="1"/><rect x="164" y="56" width="233" height="1"/><rect x="952" y="56" width="72" height="1"/><rect x="18" y="57" width="9" height="1"/><rect x="164" y="57" width="231" height="1"/><rect x="950" y="57" width="74" height="1"/><rect x="18" y="58" width="9" height="1"/><rect x="166" y="58" width="228" height="1"/><rect x="949" y="58" width="75" height="1"/><rect x="18" y="59" width="9" height="1"/><rect x="168" y="59" width="224" height="1"/><rect x="947" y="59" width="77" height="1"/><rect x="18" y="60" width="9" height="1"/><rect x="170" y="60" width="220" height="1"/><rect x="946" y="60" width="78" height="1"/><rect x="18" y="61" width="9" height="1"/><rect x="173" y="61" width="215" height="1"/><rect x="945" y="61" width="79" height="1"/><rect x="17" y="62" width="10" height="1"/><rect x="175" y="62" width="211" height="1"/><rect x="944" y="62" width="80" height="1"/><rect x="17" y="63" width="10" height="1"/><rect x="179" y="63" width="205" height="1"/><rect x="942" y="63" width="82" height="1"/><rect x="17" y="64" width="11" height="1"/><rect x="181" y="64" width="202" height="1"/><rect x="941" y="64" width="83" height="1"/><rect x="17" y="65" width="11" height="1"/><rect x="181" y="65" width="200" height="1"/><rect x="940" y="65" width="84" height="1"/><rect x="17" y="66" width="11" height="1"/><rect x="181" y="66" width="17" height="1"/><rect x="201" y="66" width="177" height="1"/><rect x="938" y="66" width="86" height="1"/><rect x="17" y="67" width="11" height="1"/><rect x="181" y="67" width="17" height="1"/><rect x="206" y="67" width="170" height="1"/><rect x="937" y="67" width="87" height="1"/><rect x="17" y="68" width="11" height="1"/><rect x="181" y="68" width="18" height="1"/><rect x="213" y="68" width="162" height="1"/><rect x="936" y="68" width="88" height="1"/><rect x="17" y="69" width="11" height="1"/><rect x="181" y="69" width="18" height="1"/><rect x="219" y="69" width="153" height="1"/><rect x="935" y="69" width="89" height="1"/><rect x="17" y="70" width="11" height="1"/><rect x="181" y="70" width="18" height="1"/><rect x="227" y="70" width="143" height="1"/><rect x="934" y="70" width="90" height="1"/><rect x="17" y="71" width="11" height="1"/><rect x="181" y="71" width="19" height="1"/><rect x="235" y="71" width="131" height="1"/><rect x="933" y="71" width="91" height="1"/><rect x="16" y="72" width="12" height="1"/><rect x="181" y="72" width="19" height="1"/><rect x="235" y="72" width="128" height="1"/><rect x="931" y="72" width="93" height="1"/><rect x="16" y="73" width="12" height="1"/><rect x="181" y="73" width="20" height="1"/><rect x="235" y="73" width="125" height="1"/><rect x="930" y="73" width="94" height="1"/><rect x="16" y="74" width="12" height="1"/><rect x="181" y="74" width="20" height="1"/><rect x="236" y="74" width="25" height="1"/><rect x="273" y="74" width="87" height="1"/><rect x="929" y="74" width="95" height="1"/><rect x="16" y="75" width="12" height="1"/><rect x="181" y="75" width="20" height="1"/><rect x="236" y="75" width="26" height="1"/><rect x="289" y="75" width="13" height="1"/><rect x="303" y="75" width="5" height="1"/><rect x="334" y="75" width="26" height="1"/><rect x="928" y="75" width="96" height="1"/><rect x="16" y="76" width="13" height="1"/><rect x="181" y="76" width="21" height="1"/><rect x="236" y="76" width="27" height="1"/><rect x="289" y="76" width="13" height="1"/><rect x="333" y="76" width="27" height="1"/><rect x="691" y="76" width="7" height="1"/><rect x="927" y="76" width="97" height="1"/><rect x="16" y="77" width="13" height="1"/><rect x="181" y="77" width="21" height="1"/><rect x="236" y="77" width="27" height="1"/><rect x="289" y="77" width="13" height="1"/><rect x="333" y="77" width="27" height="1"/><rect x="686" y="77" width="12" height="1"/><rect x="926" y="77" width="98" height="1"/><rect x="16" y="78" width="13" height="1"/><rect x="181" y="78" width="22" height="1"/><rect x="237" y="78" width="27" height="1"/><rect x="288" y="78" width="15" height="1"/><rect x="332" y="78" width="29" height="1"/><rect x="681" y="78" width="16" height="1"/><rect x="924" y="78" width="100" height="1"/><rect x="16" y="79" width="13" height="1"/><rect x="181" y="79" width="22" height="1"/><rect x="237" y="79" width="28" height="1"/><rect x="288" y="79" width="15" height="1"/><rect x="332" y="79" width="29" height="1"/><rect x="678" y="79" width="18" height="1"/><rect x="923" y="79" width="101" height="1"/><rect x="16" y="80" width="13" height="1"/><rect x="181" y="80" width="23" height="1"/><rect x="237" y="80" width="19" height="1"/><rect x="257" y="80" width="8" height="1"/><rect x="288" y="80" width="16" height="1"/><rect x="332" y="80" width="29" height="1"/><rect x="676" y="80" width="20" height="1"/><rect x="922" y="80" width="102" height="1"/><rect x="16" y="81" width="13" height="1"/><rect x="181" y="81" width="23" height="1"/><rect x="237" y="81" width="20" height="1"/><rect x="258" y="81" width="8" height="1"/><rect x="287" y="81" width="17" height="1"/><rect x="331" y="81" width="30" height="1"/><rect x="674" y="81" width="21" height="1"/><rect x="921" y="81" width="103" height="1"/><rect x="16" y="82" width="13" height="1"/><rect x="181" y="82" width="24" height="1"/><rect x="237" y="82" width="20" height="1"/><rect x="258" y="82" width="9" height="1"/><rect x="287" y="82" width="18" height="1"/><rect x="331" y="82" width="31" height="1"/><rect x="671" y="82" width="24" height="1"/><rect x="920" y="82" width="104" height="1"/><rect x="16" y="83" width="13" height="1"/><rect x="181" y="83" width="24" height="1"/><rect x="237" y="83" width="20" height="1"/><rect x="259" y="83" width="8" height="1"/><rect x="287" y="83" width="18" height="1"/><rect x="330" y="83" width="32" height="1"/><rect x="669" y="83" width="25" height="1"/><rect x="919" y="83" width="105" height="1"/><rect x="16" y="84" width="13" height="1"/><rect x="181" y="84" width="25" height="1"/><rect x="237" y="84" width="20" height="1"/><rect x="260" y="84" width="8" height="1"/><rect x="286" y="84" width="19" height="1"/><rect x="330" y="84" width="12" height="1"/><rect x="343" y="84" width="19" height="1"/><rect x="668" y="84" width="26" height="1"/><rect x="918" y="84" width="106" height="1"/><rect x="16" y="85" width="13" height="1"/><rect x="181" y="85" width="25" height="1"/><rect x="237" y="85" width="20" height="1"/><rect x="260" y="85" width="9" height="1"/><rect x="286" y="85" width="20" height="1"/><rect x="330" y="85" width="12" height="1"/><rect x="343" y="85" width="19" height="1"/><rect x="666" y="85" width="28" height="1"/><rect x="917" y="85" width="107" height="1"/><rect x="16" y="86" width="13" height="1"/><rect x="181" y="86" width="26" height="1"/><rect x="238" y="86" width="20" height="1"/><rect x="261" y="86" width="8" height="1"/><rect x="286" y="86" width="20" height="1"/><rect x="329" y="86" width="13" height="1"/><rect x="343" y="86" width="19" height="1"/><rect x="455" y="86" width="7" height="1"/><rect x="664" y="86" width="30" height="1"/><rect x="916" y="86" width="108" height="1"/><rect x="16" y="87" width="13" height="1"/><rect x="181" y="87" width="26" height="1"/><rect x="238" y="87" width="20" height="1"/><rect x="261" y="87" width="9" height="1"/><rect x="285" y="87" width="22" height="1"/><rect x="329" y="87" width="13" height="1"/><rect x="344" y="87" width="19" height="1"/><rect x="451" y="87" width="18" height="1"/><rect x="663" y="87" width="31" height="1"/><rect x="915" y="87" width="109" height="1"/><rect x="15" y="88" width="14" height="1"/><rect x="181" y="88" width="27" height="1"/><rect x="238" y="88" width="20" height="1"/><rect x="262" y="88" width="8" height="1"/><rect x="285" y="88" width="22" height="1"/><rect x="329" y="88" width="13" height="1"/><rect x="344" y="88" width="19" height="1"/><rect x="448" y="88" width="23" height="1"/><rect x="603" y="88" width="1" height="1"/><rect x="662" y="88" width="32" height="1"/><rect x="914" y="88" width="110" height="1"/><rect x="15" y="89" width="14" height="1"/><rect x="181" y="89" width="27" height="1"/><rect x="238" y="89" width="20" height="1"/><rect x="263" y="89" width="8" height="1"/><rect x="284" y="89" width="15" height="1"/><rect x="300" y="89" width="8" height="1"/><rect x="328" y="89" width="13" height="1"/><rect x="344" y="89" width="19" height="1"/><rect x="446" y="89" width="28" height="1"/><rect x="602" y="89" width="2" height="1"/><rect x="660" y="89" width="34" height="1"/><rect x="913" y="89" width="111" height="1"/><rect x="15" y="90" width="14" height="1"/><rect x="181" y="90" width="27" height="1"/><rect x="239" y="90" width="19" height="1"/><rect x="264" y="90" width="8" height="1"/><rect x="284" y="90" width="15" height="1"/><rect x="301" y="90" width="7" height="1"/><rect x="328" y="90" width="13" height="1"/><rect x="344" y="90" width="19" height="1"/><rect x="445" y="90" width="30" height="1"/><rect x="601" y="90" width="2" height="1"/><rect x="659" y="90" width="35" height="1"/><rect x="911" y="90" width="113" height="1"/><rect x="15" y="91" width="15" height="1"/><rect x="181" y="91" width="12" height="1"/><rect x="194" y="91" width="15" height="1"/><rect x="239" y="91" width="19" height="1"/><rect x="264" y="91" width="9" height="1"/><rect x="284" y="91" width="15" height="1"/><rect x="301" y="91" width="8" height="1"/><rect x="328" y="91" width="13" height="1"/><rect x="344" y="91" width="20" height="1"/><rect x="443" y="91" width="34" height="1"/><rect x="599" y="91" width="4" height="1"/><rect x="658" y="91" width="36" height="1"/><rect x="910" y="91" width="114" height="1"/><rect x="15" y="92" width="15" height="1"/><rect x="181" y="92" width="12" height="1"/><rect x="195" y="92" width="14" height="1"/><rect x="239" y="92" width="20" height="1"/><rect x="265" y="92" width="8" height="1"/><rect x="283" y="92" width="16" height="1"/><rect x="301" y="92" width="8" height="1"/><rect x="327" y="92" width="13" height="1"/><rect x="345" y="92" width="19" height="1"/><rect x="442" y="92" width="36" height="1"/><rect x="597" y="92" width="6" height="1"/><rect x="657" y="92" width="37" height="1"/><rect x="909" y="92" width="115" height="1"/><rect x="15" y="93" width="15" height="1"/><rect x="181" y="93" width="12" height="1"/><rect x="195" y="93" width="15" height="1"/><rect x="239" y="93" width="20" height="1"/><rect x="265" y="93" width="9" height="1"/><rect x="283" y="93" width="16" height="1"/><rect x="302" y="93" width="8" height="1"/><rect x="327" y="93" width="13" height="1"/><rect x="345" y="93" width="19" height="1"/><rect x="437" y="93" width="1" height="1"/><rect x="441" y="93" width="38" height="1"/><rect x="595" y="93" width="8" height="1"/><rect x="655" y="93" width="39" height="1"/><rect x="908" y="93" width="116" height="1"/><rect x="15" y="94" width="15" height="1"/><rect x="181" y="94" width="12" height="1"/><rect x="196" y="94" width="14" height="1"/><rect x="239" y="94" width="20" height="1"/><rect x="266" y="94" width="8" height="1"/><rect x="283" y="94" width="16" height="1"/><rect x="302" y="94" width="8" height="1"/><rect x="327" y="94" width="13" height="1"/><rect x="345" y="94" width="19" height="1"/><rect x="436" y="94" width="44" height="1"/><rect x="593" y="94" width="10" height="1"/><rect x="654" y="94" width="40" height="1"/><rect x="907" y="94" width="117" height="1"/><rect x="15" y="95" width="15" height="1"/><rect x="181" y="95" width="12" height="1"/><rect x="196" y="95" width="15" height="1"/><rect x="239" y="95" width="20" height="1"/><rect x="267" y="95" width="8" height="1"/><rect x="282" y="95" width="17" height="1"/><rect x="303" y="95" width="7" height="1"/><rect x="326" y="95" width="14" height="1"/><rect x="345" y="95" width="19" height="1"/><rect x="435" y="95" width="5" height="1"/><rect x="447" y="95" width="34" height="1"/><rect x="590" y="95" width="13" height="1"/><rect x="653" y="95" width="42" height="1"/><rect x="906" y="95" width="118" height="1"/><rect x="15" y="96" width="15" height="1"/><rect x="181" y="96" width="12" height="1"/><rect x="197" y="96" width="14" height="1"/><rect x="240" y="96" width="19" height="1"/><rect x="267" y="96" width="9" height="1"/><rect x="282" y="96" width="17" height="1"/><rect x="303" y="96" width="8" height="1"/><rect x="326" y="96" width="14" height="1"/><rect x="345" y="96" width="20" height="1"/><rect x="435" y="96" width="4" height="1"/><rect x="449" y="96" width="32" height="1"/><rect x="586" y="96" width="18" height="1"/><rect x="652" y="96" width="43" height="1"/><rect x="905" y="96" width="119" height="1"/><rect x="15" y="97" width="15" height="1"/><rect x="181" y="97" width="12" height="1"/><rect x="197" y="97" width="15" height="1"/><rect x="240" y="97" width="19" height="1"/><rect x="268" y="97" width="8" height="1"/><rect x="281" y="97" width="18" height="1"/><rect x="304" y="97" width="7" height="1"/><rect x="326" y="97" width="13" height="1"/><rect x="346" y="97" width="19" height="1"/><rect x="434" y="97" width="5" height="1"/><rect x="451" y="97" width="31" height="1"/><rect x="550" y="97" width="17" height="1"/><rect x="579" y="97" width="25" height="1"/><rect x="651" y="97" width="45" height="1"/><rect x="904" y="97" width="120" height="1"/><rect x="15" y="98" width="15" height="1"/><rect x="181" y="98" width="12" height="1"/><rect x="197" y="98" width="15" height="1"/><rect x="240" y="98" width="20" height="1"/><rect x="269" y="98" width="8" height="1"/><rect x="281" y="98" width="18" height="1"/><rect x="304" y="98" width="8" height="1"/><rect x="325" y="98" width="14" height="1"/><rect x="346" y="98" width="19" height="1"/><rect x="434" y="98" width="4" height="1"/><rect x="451" y="98" width="31" height="1"/><rect x="545" y="98" width="59" height="1"/><rect x="650" y="98" width="47" height="1"/><rect x="903" y="98" width="121" height="1"/><rect x="15" y="99" width="15" height="1"/><rect x="181" y="99" width="12" height="1"/><rect x="198" y="99" width="14" height="1"/><rect x="240" y="99" width="20" height="1"/><rect x="270" y="99" width="8" height="1"/><rect x="281" y="99" width="18" height="1"/><rect x="305" y="99" width="7" height="1"/><rect x="325" y="99" width="14" height="1"/><rect x="346" y="99" width="19" height="1"/><rect x="433" y="99" width="5" height="1"/><rect x="451" y="99" width="32" height="1"/><rect x="541" y="99" width="64" height="1"/><rect x="649" y="99" width="48" height="1"/><rect x="902" y="99" width="122" height="1"/><rect x="15" y="100" width="15" height="1"/><rect x="181" y="100" width="12" height="1"/><rect x="198" y="100" width="15" height="1"/><rect x="240" y="100" width="20" height="1"/><rect x="270" y="100" width="8" height="1"/><rect x="280" y="100" width="19" height="1"/><rect x="305" y="100" width="8" height="1"/><rect x="325" y="100" width="14" height="1"/><rect x="347" y="100" width="18" height="1"/><rect x="433" y="100" width="5" height="1"/><rect x="451" y="100" width="32" height="1"/><rect x="538" y="100" width="68" height="1"/><rect x="648" y="100" width="51" height="1"/><rect x="902" y="100" width="122" height="1"/><rect x="15" y="101" width="15" height="1"/><rect x="181" y="101" width="12" height="1"/><rect x="199" y="101" width="14" height="1"/><rect x="240" y="101" width="20" height="1"/><rect x="271" y="101" width="8" height="1"/><rect x="280" y="101" width="19" height="1"/><rect x="306" y="101" width="7" height="1"/><rect x="324" y="101" width="15" height="1"/><rect x="347" y="101" width="18" height="1"/><rect x="433" y="101" width="5" height="1"/><rect x="451" y="101" width="33" height="1"/><rect x="536" y="101" width="72" height="1"/><rect x="647" y="101" width="53" height="1"/><rect x="901" y="101" width="123" height="1"/><rect x="15" y="102" width="15" height="1"/><rect x="181" y="102" width="12" height="1"/><rect x="199" y="102" width="15" height="1"/><rect x="241" y="102" width="20" height="1"/><rect x="272" y="102" width="27" height="1"/><rect x="306" y="102" width="8" height="1"/><rect x="324" y="102" width="14" height="1"/><rect x="347" y="102" width="19" height="1"/><rect x="432" y="102" width="6" height="1"/><rect x="451" y="102" width="4" height="1"/><rect x="460" y="102" width="24" height="1"/><rect x="533" y="102" width="77" height="1"/><rect x="646" y="102" width="55" height="1"/><rect x="900" y="102" width="124" height="1"/><rect x="15" y="103" width="15" height="1"/><rect x="181" y="103" width="12" height="1"/><rect x="200" y="103" width="14" height="1"/><rect x="241" y="103" width="20" height="1"/><rect x="272" y="103" width="27" height="1"/><rect x="306" y="103" width="8" height="1"/><rect x="323" y="103" width="15" height="1"/><rect x="347" y="103" width="19" height="1"/><rect x="432" y="103" width="6" height="1"/><rect x="450" y="103" width="5" height="1"/><rect x="462" y="103" width="22" height="1"/><rect x="531" y="103" width="80" height="1"/><rect x="645" y="103" width="57" height="1"/><rect x="899" y="103" width="125" height="1"/><rect x="14" y="104" width="16" height="1"/><rect x="181" y="104" width="12" height="1"/><rect x="200" y="104" width="15" height="1"/><rect x="241" y="104" width="20" height="1"/><rect x="273" y="104" width="26" height="1"/><rect x="307" y="104" width="8" height="1"/><rect x="323" y="104" width="15" height="1"/><rect x="347" y="104" width="19" height="1"/><rect x="432" y="104" width="7" height="1"/><rect x="450" y="104" width="5" height="1"/><rect x="465" y="104" width="20" height="1"/><rect x="529" y="104" width="85" height="1"/><rect x="643" y="104" width="61" height="1"/><rect x="898" y="104" width="126" height="1"/><rect x="14" y="105" width="16" height="1"/><rect x="181" y="105" width="12" height="1"/><rect x="200" y="105" width="15" height="1"/><rect x="241" y="105" width="20" height="1"/><rect x="273" y="105" width="26" height="1"/><rect x="307" y="105" width="8" height="1"/><rect x="323" y="105" width="7" height="1"/><rect x="331" y="105" width="7" height="1"/><rect x="347" y="105" width="20" height="1"/><rect x="432" y="105" width="8" height="1"/><rect x="449" y="105" width="6" height="1"/><rect x="468" y="105" width="17" height="1"/><rect x="528" y="105" width="88" height="1"/><rect x="642" y="105" width="63" height="1"/><rect x="897" y="105" width="127" height="1"/><rect x="14" y="106" width="16" height="1"/><rect x="181" y="106" width="12" height="1"/><rect x="201" y="106" width="15" height="1"/><rect x="241" y="106" width="20" height="1"/><rect x="274" y="106" width="17" height="1"/><rect x="292" y="106" width="7" height="1"/><rect x="308" y="106" width="8" height="1"/><rect x="323" y="106" width="7" height="1"/><rect x="331" y="106" width="6" height="1"/><rect x="348" y="106" width="19" height="1"/><rect x="432" y="106" width="10" height="1"/><rect x="447" y="106" width="11" height="1"/><rect x="471" y="106" width="14" height="1"/><rect x="525" y="106" width="89" height="1"/><rect x="641" y="106" width="65" height="1"/><rect x="896" y="106" width="128" height="1"/><rect x="14" y="107" width="16" height="1"/><rect x="181" y="107" width="12" height="1"/><rect x="201" y="107" width="15" height="1"/><rect x="241" y="107" width="20" height="1"/><rect x="275" y="107" width="16" height="1"/><rect x="292" y="107" width="7" height="1"/><rect x="308" y="107" width="8" height="1"/><rect x="322" y="107" width="7" height="1"/><rect x="330" y="107" width="7" height="1"/><rect x="348" y="107" width="19" height="1"/><rect x="433" y="107" width="29" height="1"/><rect x="473" y="107" width="12" height="1"/><rect x="524" y="107" width="88" height="1"/><rect x="640" y="107" width="68" height="1"/><rect x="895" y="107" width="129" height="1"/><rect x="14" y="108" width="16" height="1"/><rect x="181" y="108" width="12" height="1"/><rect x="202" y="108" width="15" height="1"/><rect x="242" y="108" width="19" height="1"/><rect x="275" y="108" width="15" height="1"/><rect x="292" y="108" width="7" height="1"/><rect x="309" y="108" width="8" height="1"/><rect x="322" y="108" width="7" height="1"/><rect x="330" y="108" width="7" height="1"/><rect x="348" y="108" width="19" height="1"/><rect x="433" y="108" width="31" height="1"/><rect x="476" y="108" width="10" height="1"/><rect x="522" y="108" width="88" height="1"/><rect x="639" y="108" width="70" height="1"/><rect x="894" y="108" width="130" height="1"/><rect x="14" y="109" width="17" height="1"/><rect x="181" y="109" width="12" height="1"/><rect x="202" y="109" width="15" height="1"/><rect x="242" y="109" width="20" height="1"/><rect x="276" y="109" width="14" height="1"/><rect x="292" y="109" width="7" height="1"/><rect x="309" y="109" width="8" height="1"/><rect x="321" y="109" width="8" height="1"/><rect x="330" y="109" width="6" height="1"/><rect x="348" y="109" width="19" height="1"/><rect x="433" y="109" width="34" height="1"/><rect x="478" y="109" width="8" height="1"/><rect x="520" y="109" width="88" height="1"/><rect x="638" y="109" width="72" height="1"/><rect x="893" y="109" width="131" height="1"/><rect x="14" y="110" width="17" height="1"/><rect x="181" y="110" width="12" height="1"/><rect x="203" y="110" width="14" height="1"/><rect x="242" y="110" width="20" height="1"/><rect x="276" y="110" width="14" height="1"/><rect x="292" y="110" width="7" height="1"/><rect x="310" y="110" width="8" height="1"/><rect x="321" y="110" width="7" height="1"/><rect x="330" y="110" width="6" height="1"/><rect x="348" y="110" width="19" height="1"/><rect x="434" y="110" width="36" height="1"/><rect x="481" y="110" width="5" height="1"/><rect x="519" y="110" width="86" height="1"/><rect x="637" y="110" width="75" height="1"/><rect x="892" y="110" width="132" height="1"/><rect x="14" y="111" width="17" height="1"/><rect x="181" y="111" width="12" height="1"/><rect x="203" y="111" width="15" height="1"/><rect x="242" y="111" width="20" height="1"/><rect x="276" y="111" width="13" height="1"/><rect x="292" y="111" width="7" height="1"/><rect x="310" y="111" width="8" height="1"/><rect x="321" y="111" width="7" height="1"/><rect x="329" y="111" width="7" height="1"/><rect x="349" y="111" width="19" height="1"/><rect x="436" y="111" width="37" height="1"/><rect x="484" y="111" width="2" height="1"/><rect x="517" y="111" width="34" height="1"/><rect x="567" y="111" width="35" height="1"/><rect x="635" y="111" width="67" height="1"/><rect x="892" y="111" width="132" height="1"/><rect x="14" y="112" width="17" height="1"/><rect x="181" y="112" width="12" height="1"/><rect x="204" y="112" width="14" height="1"/><rect x="242" y="112" width="20" height="1"/><rect x="275" y="112" width="14" height="1"/><rect x="292" y="112" width="6" height="1"/><rect x="311" y="112" width="7" height="1"/><rect x="320" y="112" width="7" height="1"/><rect x="329" y="112" width="7" height="1"/><rect x="349" y="112" width="19" height="1"/><rect x="436" y="112" width="39" height="1"/><rect x="515" y="112" width="33" height="1"/><rect x="572" y="112" width="28" height="1"/><rect x="634" y="112" width="60" height="1"/><rect x="891" y="112" width="133" height="1"/><rect x="14" y="113" width="17" height="1"/><rect x="181" y="113" width="12" height="1"/><rect x="204" y="113" width="15" height="1"/><rect x="243" y="113" width="19" height="1"/><rect x="275" y="113" width="14" height="1"/><rect x="292" y="113" width="6" height="1"/><rect x="311" y="113" width="8" height="1"/><rect x="320" y="113" width="7" height="1"/><rect x="329" y="113" width="7" height="1"/><rect x="349" y="113" width="19" height="1"/><rect x="436" y="113" width="42" height="1"/><rect x="514" y="113" width="30" height="1"/><rect x="577" y="113" width="19" height="1"/><rect x="633" y="113" width="55" height="1"/><rect x="890" y="113" width="134" height="1"/><rect x="14" y="114" width="17" height="1"/><rect x="181" y="114" width="12" height="1"/><rect x="205" y="114" width="14" height="1"/><rect x="243" y="114" width="20" height="1"/><rect x="274" y="114" width="15" height="1"/><rect x="292" y="114" width="6" height="1"/><rect x="312" y="114" width="15" height="1"/><rect x="329" y="114" width="6" height="1"/><rect x="349" y="114" width="19" height="1"/><rect x="436" y="114" width="45" height="1"/><rect x="513" y="114" width="28" height="1"/><rect x="631" y="114" width="54" height="1"/><rect x="889" y="114" width="135" height="1"/><rect x="14" y="115" width="17" height="1"/><rect x="181" y="115" width="12" height="1"/><rect x="205" y="115" width="15" height="1"/><rect x="243" y="115" width="20" height="1"/><rect x="274" y="115" width="14" height="1"/><rect x="292" y="115" width="6" height="1"/><rect x="312" y="115" width="14" height="1"/><rect x="328" y="115" width="7" height="1"/><rect x="350" y="115" width="19" height="1"/><rect x="436" y="115" width="47" height="1"/><rect x="512" y="115" width="27" height="1"/><rect x="630" y="115" width="51" height="1"/><rect x="888" y="115" width="136" height="1"/><rect x="14" y="116" width="17" height="1"/><rect x="181" y="116" width="12" height="1"/><rect x="206" y="116" width="14" height="1"/><rect x="243" y="116" width="20" height="1"/><rect x="274" y="116" width="15" height="1"/><rect x="292" y="116" width="6" height="1"/><rect x="313" y="116" width="13" height="1"/><rect x="328" y="116" width="7" height="1"/><rect x="350" y="116" width="19" height="1"/><rect x="436" y="116" width="49" height="1"/><rect x="510" y="116" width="26" height="1"/><rect x="628" y="116" width="50" height="1"/><rect x="887" y="116" width="137" height="1"/><rect x="14" y="117" width="17" height="1"/><rect x="181" y="117" width="12" height="1"/><rect x="206" y="117" width="15" height="1"/><rect x="243" y="117" width="20" height="1"/><rect x="273" y="117" width="17" height="1"/><rect x="292" y="117" width="6" height="1"/><rect x="313" y="117" width="13" height="1"/><rect x="328" y="117" width="7" height="1"/><rect x="350" y="117" width="19" height="1"/><rect x="436" y="117" width="49" height="1"/><rect x="509" y="117" width="24" height="1"/><rect x="626" y="117" width="49" height="1"/><rect x="886" y="117" width="138" height="1"/><rect x="14" y="118" width="17" height="1"/><rect x="181" y="118" width="12" height="1"/><rect x="206" y="118" width="15" height="1"/><rect x="244" y="118" width="19" height="1"/><rect x="273" y="118" width="17" height="1"/><rect x="292" y="118" width="6" height="1"/><rect x="314" y="118" width="11" height="1"/><rect x="328" y="118" width="7" height="1"/><rect x="350" y="118" width="19" height="1"/><rect x="435" y="118" width="50" height="1"/><rect x="507" y="118" width="24" height="1"/><rect x="624" y="118" width="49" height="1"/><rect x="885" y="118" width="139" height="1"/><rect x="14" y="119" width="17" height="1"/><rect x="181" y="119" width="12" height="1"/><rect x="207" y="119" width="15" height="1"/><rect x="244" y="119" width="20" height="1"/><rect x="272" y="119" width="26" height="1"/><rect x="314" y="119" width="11" height="1"/><rect x="328" y="119" width="6" height="1"/><rect x="350" y="119" width="20" height="1"/><rect x="435" y="119" width="50" height="1"/><rect x="506" y="119" width="23" height="1"/><rect x="622" y="119" width="49" height="1"/><rect x="885" y="119" width="139" height="1"/><rect x="14" y="120" width="17" height="1"/><rect x="181" y="120" width="12" height="1"/><rect x="208" y="120" width="14" height="1"/><rect x="244" y="120" width="20" height="1"/><rect x="272" y="120" width="26" height="1"/><rect x="314" y="120" width="11" height="1"/><rect x="327" y="120" width="7" height="1"/><rect x="351" y="120" width="19" height="1"/><rect x="398" y="120" width="3" height="1"/><rect x="434" y="120" width="51" height="1"/><rect x="505" y="120" width="22" height="1"/><rect x="543" y="120" width="21" height="1"/><rect x="620" y="120" width="49" height="1"/><rect x="884" y="120" width="140" height="1"/><rect x="14" y="121" width="17" height="1"/><rect x="181" y="121" width="12" height="1"/><rect x="208" y="121" width="15" height="1"/><rect x="244" y="121" width="20" height="1"/><rect x="272" y="121" width="26" height="1"/><rect x="315" y="121" width="9" height="1"/><rect x="327" y="121" width="7" height="1"/><rect x="351" y="121" width="19" height="1"/><rect x="397" y="121" width="5" height="1"/><rect x="434" y="121" width="50" height="1"/><rect x="503" y="121" width="22" height="1"/><rect x="538" y="121" width="32" height="1"/><rect x="618" y="121" width="48" height="1"/><rect x="883" y="121" width="141" height="1"/><rect x="14" y="122" width="17" height="1"/><rect x="181" y="122" width="12" height="1"/><rect x="208" y="122" width="15" height="1"/><rect x="244" y="122" width="20" height="1"/><rect x="271" y="122" width="27" height="1"/><rect x="315" y="122" width="9" height="1"/><rect x="327" y="122" width="7" height="1"/><rect x="351" y="122" width="19" height="1"/><rect x="396" y="122" width="6" height="1"/><rect x="433" y="122" width="51" height="1"/><rect x="502" y="122" width="21" height="1"/><rect x="533" y="122" width="42" height="1"/><rect x="616" y="122" width="48" height="1"/><rect x="882" y="122" width="142" height="1"/><rect x="13" y="123" width="18" height="1"/><rect x="181" y="123" width="12" height="1"/><rect x="209" y="123" width="14" height="1"/><rect x="244" y="123" width="20" height="1"/><rect x="271" y="123" width="27" height="1"/><rect x="316" y="123" width="8" height="1"/><rect x="326" y="123" width="7" height="1"/><rect x="351" y="123" width="19" height="1"/><rect x="394" y="123" width="8" height="1"/><rect x="432" y="123" width="52" height="1"/><rect x="501" y="123" width="20" height="1"/><rect x="530" y="123" width="48" height="1"/><rect x="614" y="123" width="49" height="1"/><rect x="881" y="123" width="143" height="1"/><rect x="13" y="124" width="18" height="1"/><rect x="181" y="124" width="12" height="1"/><rect x="209" y="124" width="15" height="1"/><rect x="245" y="124" width="19" height="1"/><rect x="270" y="124" width="14" height="1"/><rect x="286" y="124" width="12" height="1"/><rect x="316" y="124" width="8" height="1"/><rect x="326" y="124" width="7" height="1"/><rect x="352" y="124" width="19" height="1"/><rect x="393" y="124" width="9" height="1"/><rect x="432" y="124" width="51" height="1"/><rect x="500" y="124" width="19" height="1"/><rect x="527" y="124" width="54" height="1"/><rect x="610" y="124" width="51" height="1"/><rect x="880" y="124" width="144" height="1"/><rect x="13" y="125" width="18" height="1"/><rect x="181" y="125" width="12" height="1"/><rect x="210" y="125" width="14" height="1"/><rect x="245" y="125" width="20" height="1"/><rect x="270" y="125" width="14" height="1"/><rect x="286" y="125" width="12" height="1"/><rect x="316" y="125" width="9" height="1"/><rect x="326" y="125" width="7" height="1"/><rect x="352" y="125" width="19" height="1"/><rect x="392" y="125" width="10" height="1"/><rect x="431" y="125" width="52" height="1"/><rect x="498" y="125" width="19" height="1"/><rect x="524" y="125" width="61" height="1"/><rect x="607" y="125" width="53" height="1"/><rect x="880" y="125" width="144" height="1"/><rect x="13" y="126" width="18" height="1"/><rect x="181" y="126" width="12" height="1"/><rect x="210" y="126" width="15" height="1"/><rect x="245" y="126" width="20" height="1"/><rect x="270" y="126" width="14" height="1"/><rect x="287" y="126" width="11" height="1"/><rect x="315" y="126" width="18" height="1"/><rect x="352" y="126" width="19" height="1"/><rect x="390" y="126" width="12" height="1"/><rect x="431" y="126" width="51" height="1"/><rect x="497" y="126" width="18" height="1"/><rect x="521" y="126" width="70" height="1"/><rect x="598" y="126" width="60" height="1"/><rect x="879" y="126" width="145" height="1"/><rect x="13" y="127" width="18" height="1"/><rect x="181" y="127" width="12" height="1"/><rect x="211" y="127" width="14" height="1"/><rect x="245" y="127" width="20" height="1"/><rect x="269" y="127" width="14" height="1"/><rect x="288" y="127" width="10" height="1"/><rect x="315" y="127" width="17" height="1"/><rect x="352" y="127" width="19" height="1"/><rect x="389" y="127" width="14" height="1"/><rect x="432" y="127" width="49" height="1"/><rect x="496" y="127" width="17" height="1"/><rect x="518" y="127" width="139" height="1"/><rect x="878" y="127" width="146" height="1"/><rect x="13" y="128" width="18" height="1"/><rect x="181" y="128" width="12" height="1"/><rect x="211" y="128" width="15" height="1"/><rect x="245" y="128" width="20" height="1"/><rect x="269" y="128" width="14" height="1"/><rect x="288" y="128" width="10" height="1"/><rect x="314" y="128" width="18" height="1"/><rect x="352" y="128" width="19" height="1"/><rect x="388" y="128" width="15" height="1"/><rect x="436" y="128" width="45" height="1"/><rect x="495" y="128" width="16" height="1"/><rect x="516" y="128" width="139" height="1"/><rect x="877" y="128" width="147" height="1"/><rect x="13" y="129" width="18" height="1"/><rect x="181" y="129" width="12" height="1"/><rect x="212" y="129" width="14" height="1"/><rect x="246" y="129" width="19" height="1"/><rect x="268" y="129" width="15" height="1"/><rect x="289" y="129" width="9" height="1"/><rect x="314" y="129" width="18" height="1"/><rect x="353" y="129" width="19" height="1"/><rect x="387" y="129" width="16" height="1"/><rect x="436" y="129" width="44" height="1"/><rect x="493" y="129" width="16" height="1"/><rect x="513" y="129" width="141" height="1"/><rect x="876" y="129" width="148" height="1"/><rect x="13" y="130" width="18" height="1"/><rect x="181" y="130" width="12" height="1"/><rect x="212" y="130" width="15" height="1"/><rect x="246" y="130" width="19" height="1"/><rect x="268" y="130" width="14" height="1"/><rect x="290" y="130" width="8" height="1"/><rect x="314" y="130" width="18" height="1"/><rect x="353" y="130" width="19" height="1"/><rect x="386" y="130" width="17" height="1"/><rect x="436" y="130" width="43" height="1"/><rect x="492" y="130" width="15" height="1"/><rect x="511" y="130" width="141" height="1"/><rect x="875" y="130" width="149" height="1"/><rect x="13" y="131" width="18" height="1"/><rect x="181" y="131" width="12" height="1"/><rect x="213" y="131" width="14" height="1"/><rect x="246" y="131" width="20" height="1"/><rect x="268" y="131" width="14" height="1"/><rect x="290" y="131" width="9" height="1"/><rect x="313" y="131" width="18" height="1"/><rect x="353" y="131" width="19" height="1"/><rect x="384" y="131" width="19" height="1"/><rect x="436" y="131" width="49" height="1"/><rect x="491" y="131" width="15" height="1"/><rect x="508" y="131" width="143" height="1"/><rect x="874" y="131" width="150" height="1"/><rect x="13" y="132" width="18" height="1"/><rect x="181" y="132" width="12" height="1"/><rect x="213" y="132" width="15" height="1"/><rect x="246" y="132" width="20" height="1"/><rect x="267" y="132" width="15" height="1"/><rect x="291" y="132" width="8" height="1"/><rect x="313" y="132" width="18" height="1"/><rect x="353" y="132" width="20" height="1"/><rect x="383" y="132" width="20" height="1"/><rect x="436" y="132" width="50" height="1"/><rect x="489" y="132" width="15" height="1"/><rect x="506" y="132" width="144" height="1"/><rect x="874" y="132" width="150" height="1"/><rect x="13" y="133" width="18" height="1"/><rect x="181" y="133" width="12" height="1"/><rect x="214" y="133" width="14" height="1"/><rect x="246" y="133" width="20" height="1"/><rect x="267" y="133" width="14" height="1"/><rect x="291" y="133" width="9" height="1"/><rect x="313" y="133" width="7" height="1"/><rect x="321" y="133" width="10" height="1"/><rect x="353" y="133" width="20" height="1"/><rect x="382" y="133" width="21" height="1"/><rect x="436" y="133" width="50" height="1"/><rect x="488" y="133" width="14" height="1"/><rect x="504" y="133" width="144" height="1"/><rect x="873" y="133" width="151" height="1"/><rect x="13" y="134" width="18" height="1"/><rect x="181" y="134" width="12" height="1"/><rect x="214" y="134" width="14" height="1"/><rect x="246" y="134" width="35" height="1"/><rect x="291" y="134" width="10" height="1"/><rect x="312" y="134" width="8" height="1"/><rect x="321" y="134" width="10" height="1"/><rect x="354" y="134" width="19" height="1"/><rect x="381" y="134" width="22" height="1"/><rect x="436" y="134" width="211" height="1"/><rect x="872" y="134" width="152" height="1"/><rect x="13" y="135" width="18" height="1"/><rect x="181" y="135" width="12" height="1"/><rect x="214" y="135" width="15" height="1"/><rect x="247" y="135" width="33" height="1"/><rect x="291" y="135" width="10" height="1"/><rect x="312" y="135" width="7" height="1"/><rect x="322" y="135" width="8" height="1"/><rect x="354" y="135" width="19" height="1"/><rect x="379" y="135" width="24" height="1"/><rect x="436" y="135" width="94" height="1"/><rect x="539" y="135" width="106" height="1"/><rect x="871" y="135" width="153" height="1"/><rect x="13" y="136" width="18" height="1"/><rect x="181" y="136" width="12" height="1"/><rect x="215" y="136" width="14" height="1"/><rect x="247" y="136" width="33" height="1"/><rect x="291" y="136" width="11" height="1"/><rect x="312" y="136" width="7" height="1"/><rect x="322" y="136" width="8" height="1"/><rect x="354" y="136" width="19" height="1"/><rect x="378" y="136" width="25" height="1"/><rect x="437" y="136" width="88" height="1"/><rect x="548" y="136" width="96" height="1"/><rect x="870" y="136" width="154" height="1"/><rect x="13" y="137" width="18" height="1"/><rect x="181" y="137" width="12" height="1"/><rect x="215" y="137" width="15" height="1"/><rect x="243" y="137" width="37" height="1"/><rect x="291" y="137" width="12" height="1"/><rect x="311" y="137" width="8" height="1"/><rect x="323" y="137" width="8" height="1"/><rect x="354" y="137" width="20" height="1"/><rect x="377" y="137" width="26" height="1"/><rect x="437" y="137" width="82" height="1"/><rect x="552" y="137" width="90" height="1"/><rect x="869" y="137" width="155" height="1"/><rect x="13" y="138" width="18" height="1"/><rect x="181" y="138" width="12" height="1"/><rect x="216" y="138" width="15" height="1"/><rect x="232" y="138" width="47" height="1"/><rect x="291" y="138" width="12" height="1"/><rect x="311" y="138" width="7" height="1"/><rect x="322" y="138" width="9" height="1"/><rect x="354" y="138" width="20" height="1"/><rect x="376" y="138" width="27" height="1"/><rect x="437" y="138" width="78" height="1"/><rect x="555" y="138" width="86" height="1"/><rect x="869" y="138" width="155" height="1"/><rect x="13" y="139" width="19" height="1"/><rect x="181" y="139" width="12" height="1"/><rect x="216" y="139" width="63" height="1"/><rect x="291" y="139" width="13" height="1"/><rect x="311" y="139" width="7" height="1"/><rect x="322" y="139" width="10" height="1"/><rect x="355" y="139" width="48" height="1"/><rect x="436" y="139" width="75" height="1"/><rect x="559" y="139" width="81" height="1"/><rect x="868" y="139" width="156" height="1"/><rect x="13" y="140" width="19" height="1"/><rect x="181" y="140" width="12" height="1"/><rect x="211" y="140" width="67" height="1"/><rect x="291" y="140" width="14" height="1"/><rect x="310" y="140" width="8" height="1"/><rect x="322" y="140" width="10" height="1"/><rect x="355" y="140" width="47" height="1"/><rect x="436" y="140" width="72" height="1"/><rect x="562" y="140" width="76" height="1"/><rect x="867" y="140" width="157" height="1"/><rect x="13" y="141" width="19" height="1"/><rect x="181" y="141" width="12" height="1"/><rect x="203" y="141" width="75" height="1"/><rect x="291" y="141" width="14" height="1"/><rect x="310" y="141" width="7" height="1"/><rect x="322" y="141" width="11" height="1"/><rect x="355" y="141" width="47" height="1"/><rect x="437" y="141" width="68" height="1"/><rect x="565" y="141" width="71" height="1"/><rect x="866" y="141" width="158" height="1"/><rect x="13" y="142" width="19" height="1"/><rect x="181" y="142" width="97" height="1"/><rect x="291" y="142" width="15" height="1"/><rect x="310" y="142" width="7" height="1"/><rect x="321" y="142" width="12" height="1"/><rect x="349" y="142" width="53" height="1"/><rect x="437" y="142" width="65" height="1"/><rect x="567" y="142" width="68" height="1"/><rect x="865" y="142" width="159" height="1"/><rect x="13" y="143" width="19" height="1"/><rect x="181" y="143" width="96" height="1"/><rect x="291" y="143" width="7" height="1"/><rect x="299" y="143" width="8" height="1"/><rect x="309" y="143" width="7" height="1"/><rect x="321" y="143" width="12" height="1"/><rect x="348" y="143" width="54" height="1"/><rect x="438" y="143" width="9" height="1"/><rect x="451" y="143" width="48" height="1"/><rect x="570" y="143" width="63" height="1"/><rect x="865" y="143" width="159" height="1"/><rect x="13" y="144" width="19" height="1"/><rect x="171" y="144" width="106" height="1"/><rect x="291" y="144" width="7" height="1"/><rect x="299" y="144" width="8" height="1"/><rect x="309" y="144" width="7" height="1"/><rect x="321" y="144" width="13" height="1"/><rect x="348" y="144" width="54" height="1"/><rect x="449" y="144" width="48" height="1"/><rect x="573" y="144" width="58" height="1"/><rect x="864" y="144" width="160" height="1"/><rect x="13" y="145" width="19" height="1"/><rect x="161" y="145" width="116" height="1"/><rect x="291" y="145" width="7" height="1"/><rect x="300" y="145" width="16" height="1"/><rect x="321" y="145" width="13" height="1"/><rect x="348" y="145" width="54" height="1"/><rect x="448" y="145" width="46" height="1"/><rect x="576" y="145" width="53" height="1"/><rect x="863" y="145" width="161" height="1"/><rect x="13" y="146" width="19" height="1"/><rect x="151" y="146" width="125" height="1"/><rect x="291" y="146" width="7" height="1"/><rect x="301" y="146" width="15" height="1"/><rect x="320" y="146" width="15" height="1"/><rect x="348" y="146" width="54" height="1"/><rect x="447" y="146" width="44" height="1"/><rect x="504" y="146" width="4" height="1"/><rect x="579" y="146" width="47" height="1"/><rect x="862" y="146" width="162" height="1"/><rect x="13" y="147" width="19" height="1"/><rect x="140" y="147" width="136" height="1"/><rect x="291" y="147" width="7" height="1"/><rect x="301" y="147" width="14" height="1"/><rect x="320" y="147" width="15" height="1"/><rect x="348" y="147" width="54" height="1"/><rect x="446" y="147" width="46" height="1"/><rect x="504" y="147" width="13" height="1"/><rect x="582" y="147" width="42" height="1"/><rect x="861" y="147" width="163" height="1"/><rect x="13" y="148" width="19" height="1"/><rect x="131" y="148" width="145" height="1"/><rect x="291" y="148" width="7" height="1"/><rect x="302" y="148" width="13" height="1"/><rect x="320" y="148" width="7" height="1"/><rect x="328" y="148" width="8" height="1"/><rect x="348" y="148" width="54" height="1"/><rect x="447" y="148" width="46" height="1"/><rect x="504" y="148" width="20" height="1"/><rect x="586" y="148" width="35" height="1"/><rect x="860" y="148" width="164" height="1"/><rect x="13" y="149" width="19" height="1"/><rect x="120" y="149" width="155" height="1"/><rect x="291" y="149" width="7" height="1"/><rect x="303" y="149" width="12" height="1"/><rect x="319" y="149" width="8" height="1"/><rect x="329" y="149" width="7" height="1"/><rect x="348" y="149" width="55" height="1"/><rect x="447" y="149" width="47" height="1"/><rect x="504" y="149" width="27" height="1"/><rect x="591" y="149" width="26" height="1"/><rect x="860" y="149" width="164" height="1"/><rect x="13" y="150" width="19" height="1"/><rect x="112" y="150" width="163" height="1"/><rect x="291" y="150" width="7" height="1"/><rect x="303" y="150" width="11" height="1"/><rect x="319" y="150" width="7" height="1"/><rect x="329" y="150" width="8" height="1"/><rect x="348" y="150" width="55" height="1"/><rect x="448" y="150" width="47" height="1"/><rect x="503" y="150" width="36" height="1"/><rect x="599" y="150" width="10" height="1"/><rect x="859" y="150" width="165" height="1"/><rect x="13" y="151" width="19" height="1"/><rect x="101" y="151" width="174" height="1"/><rect x="291" y="151" width="7" height="1"/><rect x="304" y="151" width="10" height="1"/><rect x="319" y="151" width="7" height="1"/><rect x="330" y="151" width="7" height="1"/><rect x="348" y="151" width="56" height="1"/><rect x="448" y="151" width="47" height="1"/><rect x="503" y="151" width="43" height="1"/><rect x="858" y="151" width="166" height="1"/><rect x="13" y="152" width="19" height="1"/><rect x="93" y="152" width="182" height="1"/><rect x="291" y="152" width="7" height="1"/><rect x="304" y="152" width="10" height="1"/><rect x="319" y="152" width="7" height="1"/><rect x="330" y="152" width="8" height="1"/><rect x="348" y="152" width="57" height="1"/><rect x="448" y="152" width="48" height="1"/><rect x="503" y="152" width="51" height="1"/><rect x="857" y="152" width="167" height="1"/><rect x="13" y="153" width="19" height="1"/><rect x="82" y="153" width="193" height="1"/><rect x="291" y="153" width="6" height="1"/><rect x="305" y="153" width="9" height="1"/><rect x="319" y="153" width="7" height="1"/><rect x="330" y="153" width="8" height="1"/><rect x="347" y="153" width="59" height="1"/><rect x="411" y="153" width="2" height="1"/><rect x="447" y="153" width="50" height="1"/><rect x="503" y="153" width="57" height="1"/><rect x="856" y="153" width="168" height="1"/><rect x="13" y="154" width="19" height="1"/><rect x="75" y="154" width="200" height="1"/><rect x="291" y="154" width="6" height="1"/><rect x="305" y="154" width="9" height="1"/><rect x="318" y="154" width="7" height="1"/><rect x="331" y="154" width="8" height="1"/><rect x="347" y="154" width="60" height="1"/><rect x="409" y="154" width="5" height="1"/><rect x="447" y="154" width="51" height="1"/><rect x="503" y="154" width="63" height="1"/><rect x="856" y="154" width="168" height="1"/><rect x="13" y="155" width="19" height="1"/><rect x="66" y="155" width="209" height="1"/><rect x="291" y="155" width="6" height="1"/><rect x="305" y="155" width="10" height="1"/><rect x="318" y="155" width="7" height="1"/><rect x="331" y="155" width="8" height="1"/><rect x="347" y="155" width="60" height="1"/><rect x="409" y="155" width="6" height="1"/><rect x="447" y="155" width="51" height="1"/><rect x="503" y="155" width="72" height="1"/><rect x="855" y="155" width="169" height="1"/><rect x="13" y="156" width="19" height="1"/><rect x="61" y="156" width="214" height="1"/><rect x="291" y="156" width="6" height="1"/><rect x="305" y="156" width="11" height="1"/><rect x="318" y="156" width="7" height="1"/><rect x="332" y="156" width="8" height="1"/><rect x="347" y="156" width="61" height="1"/><rect x="409" y="156" width="6" height="1"/><rect x="449" y="156" width="50" height="1"/><rect x="503" y="156" width="79" height="1"/><rect x="854" y="156" width="170" height="1"/><rect x="13" y="157" width="19" height="1"/><rect x="54" y="157" width="221" height="1"/><rect x="290" y="157" width="7" height="1"/><rect x="304" y="157" width="12" height="1"/><rect x="318" y="157" width="7" height="1"/><rect x="332" y="157" width="8" height="1"/><rect x="347" y="157" width="68" height="1"/><rect x="451" y="157" width="48" height="1"/><rect x="502" y="157" width="87" height="1"/><rect x="853" y="157" width="171" height="1"/><rect x="13" y="158" width="19" height="1"/><rect x="50" y="158" width="226" height="1"/><rect x="290" y="158" width="7" height="1"/><rect x="304" y="158" width="20" height="1"/><rect x="333" y="158" width="8" height="1"/><rect x="347" y="158" width="69" height="1"/><rect x="450" y="158" width="50" height="1"/><rect x="502" y="158" width="96" height="1"/><rect x="852" y="158" width="172" height="1"/><rect x="13" y="159" width="19" height="1"/><rect x="47" y="159" width="229" height="1"/><rect x="290" y="159" width="7" height="1"/><rect x="304" y="159" width="20" height="1"/><rect x="333" y="159" width="8" height="1"/><rect x="347" y="159" width="70" height="1"/><rect x="449" y="159" width="51" height="1"/><rect x="502" y="159" width="102" height="1"/><rect x="851" y="159" width="173" height="1"/><rect x="13" y="160" width="19" height="1"/><rect x="44" y="160" width="232" height="1"/><rect x="290" y="160" width="7" height="1"/><rect x="303" y="160" width="21" height="1"/><rect x="334" y="160" width="8" height="1"/><rect x="347" y="160" width="71" height="1"/><rect x="448" y="160" width="53" height="1"/><rect x="502" y="160" width="111" height="1"/><rect x="851" y="160" width="173" height="1"/><rect x="13" y="161" width="19" height="1"/><rect x="42" y="161" width="234" height="1"/><rect x="290" y="161" width="7" height="1"/><rect x="303" y="161" width="21" height="1"/><rect x="334" y="161" width="8" height="1"/><rect x="347" y="161" width="71" height="1"/><rect x="447" y="161" width="54" height="1"/><rect x="502" y="161" width="117" height="1"/><rect x="850" y="161" width="174" height="1"/><rect x="13" y="162" width="19" height="1"/><rect x="39" y="162" width="237" height="1"/><rect x="290" y="162" width="7" height="1"/><rect x="303" y="162" width="7" height="1"/><rect x="311" y="162" width="12" height="1"/><rect x="335" y="162" width="8" height="1"/><rect x="347" y="162" width="71" height="1"/><rect x="447" y="162" width="181" height="1"/><rect x="849" y="162" width="175" height="1"/><rect x="13" y="163" width="19" height="1"/><rect x="38" y="163" width="238" height="1"/><rect x="290" y="163" width="7" height="1"/><rect x="302" y="163" width="8" height="1"/><rect x="312" y="163" width="11" height="1"/><rect x="335" y="163" width="8" height="1"/><rect x="346" y="163" width="72" height="1"/><rect x="446" y="163" width="188" height="1"/><rect x="849" y="163" width="175" height="1"/><rect x="14" y="164" width="18" height="1"/><rect x="36" y="164" width="240" height="1"/><rect x="290" y="164" width="7" height="1"/><rect x="302" y="164" width="7" height="1"/><rect x="313" y="164" width="10" height="1"/><rect x="336" y="164" width="8" height="1"/><rect x="347" y="164" width="71" height="1"/><rect x="445" y="164" width="197" height="1"/><rect x="848" y="164" width="176" height="1"/><rect x="14" y="165" width="18" height="1"/><rect x="35" y="165" width="242" height="1"/><rect x="290" y="165" width="7" height="1"/><rect x="302" y="165" width="7" height="1"/><rect x="313" y="165" width="10" height="1"/><rect x="336" y="165" width="8" height="1"/><rect x="347" y="165" width="72" height="1"/><rect x="445" y="165" width="202" height="1"/><rect x="847" y="165" width="177" height="1"/><rect x="14" y="166" width="18" height="1"/><rect x="35" y="166" width="242" height="1"/><rect x="290" y="166" width="7" height="1"/><rect x="301" y="166" width="8" height="1"/><rect x="314" y="166" width="8" height="1"/><rect x="336" y="166" width="8" height="1"/><rect x="347" y="166" width="73" height="1"/><rect x="445" y="166" width="211" height="1"/><rect x="846" y="166" width="178" height="1"/><rect x="14" y="167" width="18" height="1"/><rect x="34" y="167" width="388" height="1"/><rect x="444" y="167" width="218" height="1"/><rect x="845" y="167" width="179" height="1"/><rect x="14" y="168" width="18" height="1"/><rect x="34" y="168" width="391" height="1"/><rect x="444" y="168" width="226" height="1"/><rect x="845" y="168" width="179" height="1"/><rect x="14" y="169" width="414" height="1"/><rect x="443" y="169" width="235" height="1"/><rect x="844" y="169" width="180" height="1"/><rect x="15" y="170" width="670" height="1"/><rect x="843" y="170" width="181" height="1"/><rect x="15" y="171" width="678" height="1"/><rect x="842" y="171" width="182" height="1"/><rect x="15" y="172" width="684" height="1"/><rect x="841" y="172" width="183" height="1"/><rect x="14" y="173" width="693" height="1"/><rect x="841" y="173" width="183" height="1"/><rect x="13" y="174" width="702" height="1"/><rect x="840" y="174" width="184" height="1"/><rect x="12" y="175" width="710" height="1"/><rect x="839" y="175" width="185" height="1"/><rect x="10" y="176" width="720" height="1"/><rect x="838" y="176" width="186" height="1"/><rect x="9" y="177" width="728" height="1"/><rect x="838" y="177" width="186" height="1"/><rect x="8" y="178" width="737" height="1"/><rect x="837" y="178" width="187" height="1"/><rect x="6" y="179" width="746" height="1"/><rect x="836" y="179" width="188" height="1"/><rect x="5" y="180" width="755" height="1"/><rect x="835" y="180" width="189" height="1"/><rect x="4" y="181" width="762" height="1"/><rect x="834" y="181" width="190" height="1"/><rect x="3" y="182" width="773" height="1"/><rect x="832" y="182" width="192" height="1"/><rect x="2" y="183" width="779" height="1"/><rect x="831" y="183" width="193" height="1"/><rect x="2" y="184" width="788" height="1"/><rect x="829" y="184" width="195" height="1"/><rect x="1" y="185" width="795" height="1"/><rect x="826" y="185" width="198" height="1"/><rect x="1" y="186" width="804" height="1"/><rect x="822" y="186" width="202" height="1"/><rect x="1" y="187" width="1023" height="1"/><rect x="0" y="188" width="1024" height="1"/><rect x="0" y="189" width="1024" height="1"/><rect x="0" y="190" width="1024" height="1"/><rect x="0" y="191" width="1024" height="1"/><rect x="0" y="192" width="1024" height="1"/><rect x="1" y="193" width="1023" height="1"/><rect x="1" y="194" width="1023" height="1"/><rect x="2" y="195" width="1022" height="1"/><rect x="2" y="196" width="1022" height="1"/><rect x="3" y="197" width="1021" height="1"/><rect x="4" y="198" width="1020" height="1"/><rect x="5" y="199" width="1019" height="1"/><rect x="6" y="200" width="1018" height="1"/><rect x="7" y="201" width="1017" height="1"/><rect x="8" y="202" width="1016" height="1"/><rect x="10" y="203" width="1014" height="1"/><rect x="11" y="204" width="1013" height="1"/><rect x="12" y="205" width="1012" height="1"/><rect x="13" y="206" width="1011" height="1"/><rect x="13" y="207" width="1011" height="1"/><rect x="13" y="208" width="1010" height="1"/><rect x="13" y="209" width="1010" height="1"/><rect x="13" y="210" width="1009" height="1"/><rect x="13" y="211" width="1008" height="1"/><rect x="13" y="212" width="1008" height="1"/><rect x="13" y="213" width="16" height="1"/><rect x="33" y="213" width="987" height="1"/><rect x="13" y="214" width="16" height="1"/><rect x="33" y="214" width="986" height="1"/><rect x="13" y="215" width="16" height="1"/><rect x="34" y="215" width="985" height="1"/><rect x="13" y="216" width="17" height="1"/><rect x="34" y="216" width="984" height="1"/><rect x="12" y="217" width="18" height="1"/><rect x="34" y="217" width="984" height="1"/><rect x="12" y="218" width="18" height="1"/><rect x="34" y="218" width="983" height="1"/><rect x="12" y="219" width="18" height="1"/><rect x="34" y="219" width="982" height="1"/><rect x="12" y="220" width="18" height="1"/><rect x="34" y="220" width="982" height="1"/><rect x="12" y="221" width="18" height="1"/><rect x="34" y="221" width="981" height="1"/><rect x="13" y="222" width="17" height="1"/><rect x="34" y="222" width="980" height="1"/><rect x="12" y="223" width="18" height="1"/><rect x="34" y="223" width="979" height="1"/><rect x="12" y="224" width="19" height="1"/><rect x="35" y="224" width="978" height="1"/><rect x="12" y="225" width="19" height="1"/><rect x="35" y="225" width="977" height="1"/><rect x="12" y="226" width="19" height="1"/><rect x="35" y="226" width="976" height="1"/><rect x="12" y="227" width="19" height="1"/><rect x="35" y="227" width="975" height="1"/><rect x="12" y="228" width="19" height="1"/><rect x="35" y="228" width="975" height="1"/><rect x="12" y="229" width="19" height="1"/><rect x="35" y="229" width="974" height="1"/><rect x="12" y="230" width="19" height="1"/><rect x="35" y="230" width="973" height="1"/><rect x="12" y="231" width="19" height="1"/><rect x="35" y="231" width="972" height="1"/><rect x="12" y="232" width="19" height="1"/><rect x="36" y="232" width="971" height="1"/><rect x="12" y="233" width="19" height="1"/><rect x="36" y="233" width="970" height="1"/><rect x="12" y="234" width="19" height="1"/><rect x="36" y="234" width="969" height="1"/><rect x="12" y="235" width="19" height="1"/><rect x="36" y="235" width="968" height="1"/><rect x="12" y="236" width="19" height="1"/><rect x="36" y="236" width="967" height="1"/><rect x="12" y="237" width="19" height="1"/><rect x="36" y="237" width="966" height="1"/><rect x="12" y="238" width="18" height="1"/><rect x="36" y="238" width="966" height="1"/><rect x="12" y="239" width="18" height="1"/><rect x="36" y="239" width="965" height="1"/><rect x="12" y="240" width="18" height="1"/><rect x="36" y="240" width="964" height="1"/><rect x="12" y="241" width="18" height="1"/><rect x="36" y="241" width="963" height="1"/><rect x="12" y="242" width="18" height="1"/><rect x="37" y="242" width="961" height="1"/><rect x="12" y="243" width="18" height="1"/><rect x="37" y="243" width="960" height="1"/><rect x="12" y="244" width="18" height="1"/><rect x="37" y="244" width="959" height="1"/><rect x="12" y="245" width="18" height="1"/><rect x="37" y="245" width="958" height="1"/><rect x="12" y="246" width="18" height="1"/><rect x="37" y="246" width="957" height="1"/><rect x="12" y="247" width="18" height="1"/><rect x="37" y="247" width="956" height="1"/><rect x="12" y="248" width="18" height="1"/><rect x="37" y="248" width="955" height="1"/><rect x="12" y="249" width="18" height="1"/><rect x="38" y="249" width="953" height="1"/><rect x="12" y="250" width="18" height="1"/><rect x="38" y="250" width="952" height="1"/><rect x="12" y="251" width="18" height="1"/><rect x="38" y="251" width="951" height="1"/><rect x="12" y="252" width="18" height="1"/><rect x="38" y="252" width="949" height="1"/><rect x="12" y="253" width="18" height="1"/><rect x="38" y="253" width="948" height="1"/><rect x="13" y="254" width="17" height="1"/><rect x="38" y="254" width="947" height="1"/><rect x="13" y="255" width="16" height="1"/><rect x="38" y="255" width="946" height="1"/><rect x="13" y="256" width="16" height="1"/><rect x="38" y="256" width="944" height="1"/><rect x="13" y="257" width="16" height="1"/><rect x="38" y="257" width="942" height="1"/><rect x="13" y="258" width="16" height="1"/><rect x="39" y="258" width="940" height="1"/><rect x="13" y="259" width="16" height="1"/><rect x="39" y="259" width="938" height="1"/><rect x="13" y="260" width="16" height="1"/><rect x="39" y="260" width="936" height="1"/><rect x="13" y="261" width="16" height="1"/><rect x="39" y="261" width="932" height="1"/><rect x="13" y="262" width="16" height="1"/><rect x="39" y="262" width="929" height="1"/><rect x="13" y="263" width="16" height="1"/><rect x="39" y="263" width="929" height="1"/><rect x="13" y="264" width="16" height="1"/><rect x="40" y="264" width="928" height="1"/><rect x="13" y="265" width="16" height="1"/><rect x="40" y="265" width="928" height="1"/><rect x="13" y="266" width="16" height="1"/><rect x="40" y="266" width="895" height="1"/><rect x="940" y="266" width="28" height="1"/><rect x="13" y="267" width="16" height="1"/><rect x="40" y="267" width="880" height="1"/><rect x="941" y="267" width="27" height="1"/><rect x="13" y="268" width="16" height="1"/><rect x="40" y="268" width="862" height="1"/><rect x="943" y="268" width="25" height="1"/><rect x="13" y="269" width="16" height="1"/><rect x="40" y="269" width="849" height="1"/><rect x="944" y="269" width="24" height="1"/><rect x="13" y="270" width="15" height="1"/><rect x="40" y="270" width="833" height="1"/><rect x="945" y="270" width="23" height="1"/><rect x="13" y="271" width="15" height="1"/><rect x="40" y="271" width="820" height="1"/><rect x="946" y="271" width="22" height="1"/><rect x="13" y="272" width="15" height="1"/><rect x="41" y="272" width="803" height="1"/><rect x="947" y="272" width="21" height="1"/><rect x="13" y="273" width="15" height="1"/><rect x="41" y="273" width="791" height="1"/><rect x="949" y="273" width="19" height="1"/><rect x="13" y="274" width="15" height="1"/><rect x="41" y="274" width="775" height="1"/><rect x="950" y="274" width="18" height="1"/><rect x="13" y="275" width="15" height="1"/><rect x="42" y="275" width="762" height="1"/><rect x="951" y="275" width="17" height="1"/><rect x="13" y="276" width="15" height="1"/><rect x="42" y="276" width="747" height="1"/><rect x="952" y="276" width="16" height="1"/><rect x="13" y="277" width="15" height="1"/><rect x="42" y="277" width="732" height="1"/><rect x="953" y="277" width="23" height="1"/><rect x="13" y="278" width="15" height="1"/><rect x="43" y="278" width="716" height="1"/><rect x="954" y="278" width="25" height="1"/><rect x="13" y="279" width="15" height="1"/><rect x="43" y="279" width="697" height="1"/><rect x="955" y="279" width="26" height="1"/><rect x="13" y="280" width="15" height="1"/><rect x="43" y="280" width="686" height="1"/><rect x="957" y="280" width="25" height="1"/><rect x="13" y="281" width="15" height="1"/><rect x="44" y="281" width="669" height="1"/><rect x="958" y="281" width="25" height="1"/><rect x="13" y="282" width="15" height="1"/><rect x="44" y="282" width="657" height="1"/><rect x="959" y="282" width="25" height="1"/><rect x="13" y="283" width="15" height="1"/><rect x="45" y="283" width="640" height="1"/><rect x="960" y="283" width="24" height="1"/><rect x="13" y="284" width="14" height="1"/><rect x="46" y="284" width="625" height="1"/><rect x="961" y="284" width="24" height="1"/><rect x="14" y="285" width="13" height="1"/><rect x="46" y="285" width="609" height="1"/><rect x="961" y="285" width="24" height="1"/><rect x="14" y="286" width="13" height="1"/><rect x="47" y="286" width="593" height="1"/><rect x="960" y="286" width="26" height="1"/><rect x="14" y="287" width="13" height="1"/><rect x="48" y="287" width="578" height="1"/><rect x="960" y="287" width="26" height="1"/><rect x="14" y="288" width="13" height="1"/><rect x="49" y="288" width="562" height="1"/><rect x="960" y="288" width="26" height="1"/><rect x="14" y="289" width="13" height="1"/><rect x="51" y="289" width="547" height="1"/><rect x="960" y="289" width="26" height="1"/><rect x="14" y="290" width="13" height="1"/><rect x="52" y="290" width="525" height="1"/><rect x="960" y="290" width="26" height="1"/><rect x="14" y="291" width="13" height="1"/><rect x="54" y="291" width="89" height="1"/><rect x="150" y="291" width="416" height="1"/><rect x="960" y="291" width="26" height="1"/><rect x="14" y="292" width="13" height="1"/><rect x="57" y="292" width="87" height="1"/><rect x="164" y="292" width="386" height="1"/><rect x="960" y="292" width="26" height="1"/><rect x="14" y="293" width="13" height="1"/><rect x="59" y="293" width="86" height="1"/><rect x="170" y="293" width="367" height="1"/><rect x="960" y="293" width="26" height="1"/><rect x="14" y="294" width="12" height="1"/><rect x="65" y="294" width="82" height="1"/><rect x="180" y="294" width="340" height="1"/><rect x="960" y="294" width="26" height="1"/><rect x="14" y="295" width="12" height="1"/><rect x="70" y="295" width="15" height="1"/><rect x="107" y="295" width="41" height="1"/><rect x="187" y="295" width="319" height="1"/><rect x="961" y="295" width="24" height="1"/><rect x="14" y="296" width="12" height="1"/><rect x="70" y="296" width="15" height="1"/><rect x="129" y="296" width="21" height="1"/><rect x="195" y="296" width="296" height="1"/><rect x="961" y="296" width="24" height="1"/><rect x="14" y="297" width="12" height="1"/><rect x="70" y="297" width="16" height="1"/><rect x="130" y="297" width="21" height="1"/><rect x="204" y="297" width="278" height="1"/><rect x="962" y="297" width="22" height="1"/><rect x="14" y="298" width="12" height="1"/><rect x="71" y="298" width="15" height="1"/><rect x="132" y="298" width="21" height="1"/><rect x="210" y="298" width="270" height="1"/><rect x="962" y="298" width="22" height="1"/><rect x="14" y="299" width="12" height="1"/><rect x="71" y="299" width="15" height="1"/><rect x="133" y="299" width="21" height="1"/><rect x="219" y="299" width="259" height="1"/><rect x="963" y="299" width="20" height="1"/><rect x="14" y="300" width="12" height="1"/><rect x="71" y="300" width="16" height="1"/><rect x="135" y="300" width="21" height="1"/><rect x="225" y="300" width="252" height="1"/><rect x="964" y="300" width="18" height="1"/><rect x="14" y="301" width="12" height="1"/><rect x="71" y="301" width="16" height="1"/><rect x="137" y="301" width="20" height="1"/><rect x="234" y="301" width="241" height="1"/><rect x="966" y="301" width="14" height="1"/><rect x="15" y="302" width="11" height="1"/><rect x="72" y="302" width="16" height="1"/><rect x="138" y="302" width="21" height="1"/><rect x="241" y="302" width="233" height="1"/><rect x="967" y="302" width="11" height="1"/><rect x="15" y="303" width="11" height="1"/><rect x="72" y="303" width="16" height="1"/><rect x="140" y="303" width="20" height="1"/><rect x="249" y="303" width="223" height="1"/><rect x="15" y="304" width="11" height="1"/><rect x="72" y="304" width="17" height="1"/><rect x="141" y="304" width="21" height="1"/><rect x="252" y="304" width="218" height="1"/><rect x="15" y="305" width="11" height="1"/><rect x="72" y="305" width="17" height="1"/><rect x="143" y="305" width="20" height="1"/><rect x="252" y="305" width="217" height="1"/><rect x="15" y="306" width="10" height="1"/><rect x="73" y="306" width="15" height="1"/><rect x="144" y="306" width="21" height="1"/><rect x="252" y="306" width="215" height="1"/><rect x="15" y="307" width="10" height="1"/><rect x="73" y="307" width="13" height="1"/><rect x="146" y="307" width="20" height="1"/><rect x="251" y="307" width="214" height="1"/><rect x="15" y="308" width="10" height="1"/><rect x="73" y="308" width="11" height="1"/><rect x="147" y="308" width="21" height="1"/><rect x="251" y="308" width="34" height="1"/><rect x="291" y="308" width="173" height="1"/><rect x="15" y="309" width="10" height="1"/><rect x="73" y="309" width="8" height="1"/><rect x="149" y="309" width="20" height="1"/><rect x="251" y="309" width="32" height="1"/><rect x="298" y="309" width="164" height="1"/><rect x="15" y="310" width="10" height="1"/><rect x="150" y="310" width="21" height="1"/><rect x="251" y="310" width="30" height="1"/><rect x="308" y="310" width="152" height="1"/><rect x="15" y="311" width="10" height="1"/><rect x="152" y="311" width="20" height="1"/><rect x="250" y="311" width="28" height="1"/><rect x="313" y="311" width="146" height="1"/><rect x="15" y="312" width="10" height="1"/><rect x="154" y="312" width="20" height="1"/><rect x="250" y="312" width="26" height="1"/><rect x="322" y="312" width="135" height="1"/><rect x="15" y="313" width="10" height="1"/><rect x="155" y="313" width="20" height="1"/><rect x="250" y="313" width="25" height="1"/><rect x="330" y="313" width="125" height="1"/><rect x="16" y="314" width="9" height="1"/><rect x="157" y="314" width="20" height="1"/><rect x="250" y="314" width="24" height="1"/><rect x="338" y="314" width="116" height="1"/><rect x="16" y="315" width="9" height="1"/><rect x="158" y="315" width="21" height="1"/><rect x="249" y="315" width="25" height="1"/><rect x="346" y="315" width="106" height="1"/><rect x="16" y="316" width="8" height="1"/><rect x="159" y="316" width="21" height="1"/><rect x="249" y="316" width="25" height="1"/><rect x="352" y="316" width="98" height="1"/><rect x="16" y="317" width="8" height="1"/><rect x="161" y="317" width="20" height="1"/><rect x="248" y="317" width="26" height="1"/><rect x="361" y="317" width="88" height="1"/><rect x="16" y="318" width="8" height="1"/><rect x="162" y="318" width="21" height="1"/><rect x="248" y="318" width="25" height="1"/><rect x="369" y="318" width="78" height="1"/><rect x="16" y="319" width="8" height="1"/><rect x="164" y="319" width="20" height="1"/><rect x="248" y="319" width="25" height="1"/><rect x="377" y="319" width="68" height="1"/><rect x="16" y="320" width="8" height="1"/><rect x="165" y="320" width="21" height="1"/><rect x="248" y="320" width="24" height="1"/><rect x="384" y="320" width="60" height="1"/><rect x="16" y="321" width="8" height="1"/><rect x="167" y="321" width="21" height="1"/><rect x="247" y="321" width="25" height="1"/><rect x="393" y="321" width="49" height="1"/><rect x="16" y="322" width="8" height="1"/><rect x="168" y="322" width="21" height="1"/><rect x="247" y="322" width="25" height="1"/><rect x="399" y="322" width="41" height="1"/><rect x="16" y="323" width="8" height="1"/><rect x="170" y="323" width="20" height="1"/><rect x="247" y="323" width="25" height="1"/><rect x="409" y="323" width="29" height="1"/><rect x="16" y="324" width="8" height="1"/><rect x="172" y="324" width="20" height="1"/><rect x="246" y="324" width="25" height="1"/><rect x="416" y="324" width="21" height="1"/><rect x="16" y="325" width="8" height="1"/><rect x="173" y="325" width="20" height="1"/><rect x="246" y="325" width="25" height="1"/><rect x="425" y="325" width="10" height="1"/><rect x="16" y="326" width="8" height="1"/><rect x="175" y="326" width="20" height="1"/><rect x="246" y="326" width="25" height="1"/><rect x="431" y="326" width="2" height="1"/><rect x="17" y="327" width="7" height="1"/><rect x="176" y="327" width="21" height="1"/><rect x="245" y="327" width="25" height="1"/><rect x="17" y="328" width="6" height="1"/><rect x="178" y="328" width="20" height="1"/><rect x="245" y="328" width="25" height="1"/><rect x="17" y="329" width="6" height="1"/><rect x="179" y="329" width="21" height="1"/><rect x="245" y="329" width="25" height="1"/><rect x="17" y="330" width="6" height="1"/><rect x="181" y="330" width="20" height="1"/><rect x="244" y="330" width="26" height="1"/><rect x="17" y="331" width="6" height="1"/><rect x="182" y="331" width="21" height="1"/><rect x="244" y="331" width="26" height="1"/><rect x="17" y="332" width="6" height="1"/><rect x="184" y="332" width="20" height="1"/><rect x="244" y="332" width="25" height="1"/><rect x="18" y="333" width="5" height="1"/><rect x="185" y="333" width="21" height="1"/><rect x="244" y="333" width="25" height="1"/><rect x="18" y="334" width="4" height="1"/><rect x="187" y="334" width="20" height="1"/><rect x="243" y="334" width="26" height="1"/><rect x="18" y="335" width="4" height="1"/><rect x="188" y="335" width="21" height="1"/><rect x="243" y="335" width="25" height="1"/><rect x="18" y="336" width="4" height="1"/><rect x="190" y="336" width="20" height="1"/><rect x="243" y="336" width="25" height="1"/><rect x="18" y="337" width="4" height="1"/><rect x="192" y="337" width="20" height="1"/><rect x="242" y="337" width="26" height="1"/><rect x="18" y="338" width="4" height="1"/><rect x="193" y="338" width="20" height="1"/><rect x="242" y="338" width="26" height="1"/><rect x="18" y="339" width="4" height="1"/><rect x="195" y="339" width="20" height="1"/><rect x="242" y="339" width="25" height="1"/><rect x="18" y="340" width="4" height="1"/><rect x="196" y="340" width="21" height="1"/><rect x="241" y="340" width="26" height="1"/><rect x="18" y="341" width="4" height="1"/><rect x="197" y="341" width="21" height="1"/><rect x="241" y="341" width="26" height="1"/><rect x="19" y="342" width="3" height="1"/><rect x="199" y="342" width="21" height="1"/><rect x="241" y="342" width="26" height="1"/><rect x="19" y="343" width="2" height="1"/><rect x="200" y="343" width="21" height="1"/><rect x="241" y="343" width="25" height="1"/><rect x="19" y="344" width="2" height="1"/><rect x="202" y="344" width="21" height="1"/><rect x="240" y="344" width="26" height="1"/><rect x="19" y="345" width="2" height="1"/><rect x="204" y="345" width="20" height="1"/><rect x="240" y="345" width="25" height="1"/><rect x="20" y="346" width="1" height="1"/><rect x="205" y="346" width="21" height="1"/><rect x="240" y="346" width="25" height="1"/><rect x="207" y="347" width="21" height="1"/><rect x="239" y="347" width="26" height="1"/><rect x="208" y="348" width="21" height="1"/><rect x="239" y="348" width="26" height="1"/><rect x="210" y="349" width="21" height="1"/><rect x="239" y="349" width="26" height="1"/><rect x="211" y="350" width="21" height="1"/><rect x="239" y="350" width="25" height="1"/><rect x="213" y="351" width="51" height="1"/><rect x="214" y="352" width="49" height="1"/><rect x="214" y="353" width="49" height="1"/><rect x="212" y="354" width="51" height="1"/><rect x="210" y="355" width="53" height="1"/><rect x="208" y="356" width="55" height="1"/><rect x="207" y="357" width="55" height="1"/><rect x="205" y="358" width="57" height="1"/><rect x="204" y="359" width="58" height="1"/><rect x="203" y="360" width="59" height="1"/><rect x="202" y="361" width="59" height="1"/><rect x="201" y="362" width="60" height="1"/><rect x="200" y="363" width="61" height="1"/><rect x="199" y="364" width="62" height="1"/><rect x="198" y="365" width="63" height="1"/><rect x="197" y="366" width="65" height="1"/><rect x="196" y="367" width="67" height="1"/><rect x="195" y="368" width="69" height="1"/><rect x="195" y="369" width="69" height="1"/><rect x="194" y="370" width="71" height="1"/><rect x="194" y="371" width="72" height="1"/><rect x="193" y="372" width="73" height="1"/><rect x="193" y="373" width="74" height="1"/><rect x="192" y="374" width="75" height="1"/><rect x="192" y="375" width="76" height="1"/><rect x="191" y="376" width="77" height="1"/><rect x="191" y="377" width="78" height="1"/><rect x="190" y="378" width="79" height="1"/><rect x="190" y="379" width="80" height="1"/><rect x="190" y="380" width="80" height="1"/><rect x="189" y="381" width="81" height="1"/><rect x="189" y="382" width="81" height="1"/><rect x="189" y="383" width="82" height="1"/><rect x="189" y="384" width="82" height="1"/><rect x="188" y="385" width="83" height="1"/><rect x="188" y="386" width="83" height="1"/><rect x="188" y="387" width="83" height="1"/><rect x="188" y="388" width="83" height="1"/><rect x="188" y="389" width="83" height="1"/><rect x="188" y="390" width="84" height="1"/><rect x="188" y="391" width="84" height="1"/><rect x="188" y="392" width="84" height="1"/><rect x="188" y="393" width="84" height="1"/><rect x="188" y="394" width="84" height="1"/><rect x="188" y="395" width="84" height="1"/><rect x="188" y="396" width="83" height="1"/><rect x="188" y="397" width="83" height="1"/><rect x="188" y="398" width="83" height="1"/><rect x="188" y="399" width="83" height="1"/><rect x="189" y="400" width="82" height="1"/><rect x="189" y="401" width="82" height="1"/><rect x="189" y="402" width="81" height="1"/><rect x="189" y="403" width="81" height="1"/><rect x="189" y="404" width="81" height="1"/><rect x="190" y="405" width="79" height="1"/><rect x="190" y="406" width="79" height="1"/><rect x="191" y="407" width="78" height="1"/><rect x="191" y="408" width="77" height="1"/><rect x="191" y="409" width="77" height="1"/><rect x="192" y="410" width="75" height="1"/><rect x="192" y="411" width="75" height="1"/><rect x="193" y="412" width="73" height="1"/><rect x="193" y="413" width="73" height="1"/><rect x="194" y="414" width="71" height="1"/><rect x="195" y="415" width="69" height="1"/><rect x="195" y="416" width="69" height="1"/><rect x="196" y="417" width="67" height="1"/><rect x="197" y="418" width="65" height="1"/><rect x="198" y="419" width="63" height="1"/><rect x="199" y="420" width="62" height="1"/><rect x="200" y="421" width="59" height="1"/><rect x="200" y="422" width="58" height="1"/><rect x="202" y="423" width="55" height="1"/><rect x="203" y="424" width="53" height="1"/><rect x="204" y="425" width="51" height="1"/><rect x="205" y="426" width="49" height="1"/><rect x="207" y="427" width="45" height="1"/><rect x="208" y="428" width="42" height="1"/><rect x="210" y="429" width="38" height="1"/><rect x="212" y="430" width="34" height="1"/><rect x="215" y="431" width="29" height="1"/><rect x="219" y="432" width="22" height="1"/><rect x="223" y="433" width="13" height="1"/>
+</g>
+      </g>
+    </g>
+  </g>
+</svg>
+  </div>
+  <div class="loader-msg" id="loader-msg">A sincronizar</div>
+  <div class="loader-sub" id="loader-sub">Vintage Aero Club · Museu</div>
+</div>
+
+
+
+<header>
+  <button class="menu-btn" onclick="openMenu()">☰</button>
+  <div class="header-avatar" id="headerAvatar" onclick="openMenu()" style="display:none"></div>
+  <div class="logo-circle" id="logoCircle"></div>
+  <h1 id="siteTitle">Museu VAC</h1>
+  <div class="sub" id="siteSub">Acervo Museológico</div>
+  <div class="badge" id="partnerBadge">Acervo Público</div>
+</header>
+
+<div class="partner-tabs" id="partnerTabs"></div>
+
+<div class="stats" id="statsGrid"></div>
+
+<div class="section-lbl">Acervo</div>
+<div class="filterbar" id="categoryFilter"></div>
+<div class="grid" id="grid"></div>
+
+<nav class="bottom">
+  <button class="on" onclick="setTab('galeria')"><span class="icon">🗂</span>Galeria</button>
+  <button onclick="setTab('admin')"><span class="icon">＋</span>Registar</button>
+  <button onclick="openManagement()"><span class="icon">👤</span>Gestão</button>
+</nav>
+
+<!-- DETALHE DA PEÇA -->
+<div class="overlay" id="detailOverlay" onclick="closeOverlay(event,'detailOverlay')">
+  <div class="sheet" onclick="event.stopPropagation()">
+    <button class="sheet-close" onclick="hide('detailOverlay')"></button>
+    <div id="detailBody"></div>
+  </div>
+</div>
+
+<!-- LISTA DE GESTÃO -->
+<div class="overlay" id="managementOverlay" onclick="closeOverlay(event,'managementOverlay')">
+  <div class="sheet" onclick="event.stopPropagation()">
+    <button class="sheet-close" onclick="hide('managementOverlay')"></button>
+    <h2>Gestão do Acervo</h2>
+    <p style="font-size:12px; opacity:.6; margin-bottom:14px">Todas as peças, incluindo inativas. Toca numa linha para abrir a ficha completa.</p>
+    <div id="managementList"></div>
+  </div>
+</div>
+
+<!-- OPÇÕES DE PDF -->
+<div class="overlay" id="printOptionsOverlay" onclick="closeOverlay(event,'printOptionsOverlay')">
+  <div class="sheet" onclick="event.stopPropagation()">
+    <button class="sheet-close" onclick="hide('printOptionsOverlay')"></button>
+    <h2>Ficha + Etiqueta</h2>
+    <p style="font-size:13px; opacity:.7; margin-bottom:16px">A gerar PDF...</p>
+    <div id="printOptionsButtons" style="display:none; flex-direction:column; gap:10px">
+      <button class="btn accent" onclick="pdfAction('download')">📥 Descarregar PDF</button>
+      <button class="btn" onclick="pdfAction('share')">📤 Partilhar / Enviar por email</button>
+      <button class="btn" onclick="pdfAction('print')">🖨 Imprimir</button>
+    </div>
+  </div>
+</div>
+
+<!-- MENU LATERAL (drawer hamburguer) -->
+<div class="overlay" id="menuOverlay" onclick="closeOverlay(event,'menuOverlay')">
+  <div class="sheet" onclick="event.stopPropagation()">
+    <button class="sheet-close" onclick="hide('menuOverlay')"></button>
+    <h2>Vintage Aero Club</h2>
+    <div id="menuSessionBox"></div>
+    <div class="menu-links">
+      <a href="https://www.vintageaeroclub.pt" target="_blank" class="menu-link">
+        <img class="menu-link-icon" src="./logo-vac-color.png" alt="">
+        <span><strong>Site</strong><br><small>www.vintageaeroclub.pt</small></span>
+      </a>
+      <a href="https://my.vintageaeroclub.pt" target="_blank" class="menu-link">
+        <img class="menu-link-icon" src="./icon-my192.png" alt="">
+        <span><strong>Área Crew</strong><br><small>my.vintageaeroclub.pt</small></span>
+      </a>
+      <a href="https://pos.vintageaeroclub.pt" target="_blank" class="menu-link">
+        <img class="menu-link-icon" src="./icon-pos192.png" alt="">
+        <span><strong>VAC.Sales POS</strong><br><small>pos.vintageaeroclub.pt</small></span>
+      </a>
+    </div>
+    <button class="btn" id="menuLoginBtn" style="margin-top:18px" onclick="hide('menuOverlay'); openLogin()">Gestão do acervo (login)</button>
+    <button class="btn" id="menuLogoutBtn" style="margin-top:10px; display:none; background:transparent; color:var(--red); border:1px solid var(--red)" onclick="logout()">Terminar sessão</button>
+  </div>
+</div>
+
+<!-- LOGIN -->
+<div class="overlay" id="loginOverlay" onclick="closeOverlay(event,'loginOverlay')">
+  <div class="sheet" onclick="event.stopPropagation()">
+    <button class="sheet-close" onclick="hide('loginOverlay')"></button>
+    <h2>Acesso de gestão</h2>
+    <p style="font-size:13px; opacity:.7; margin-bottom:16px">Qualquer membro VAC pode entrar e registar peças no acervo.</p>
+    <div id="googleBtn" style="display:flex; justify-content:center;"></div>
+    <div id="loginMsg"></div>
+  </div>
+</div>
+
+<!-- REGISTAR PEÇA -->
+<div class="overlay" id="formOverlay" onclick="closeOverlay(event,'formOverlay')">
+  <div class="sheet" onclick="event.stopPropagation()">
+    <button class="sheet-close" onclick="hide('formOverlay')"></button>
+    <h2>Registar peça</h2>
+
+    <div style="display:flex; gap:10px; margin-bottom:10px">
+      <button type="button" class="btn" style="flex:1" onclick="document.getElementById('cameraInput').click()">📷 Tirar foto</button>
+      <button type="button" class="btn" style="flex:1" onclick="document.getElementById('galleryInput').click()">🖼 Da galeria</button>
+    </div>
+    <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none" onchange="handleFiles(event)">
+    <input type="file" id="galleryInput" accept="image/*" multiple style="display:none" onchange="handleFiles(event)">
+    <div id="photoStrip" class="photo-strip"></div>
+
+    <div class="field"><label>Nome / título</label><input id="f_nome"></div>
+    <div class="field"><label>Categoria</label>
+      <select id="f_categoria">
+        <option>Motor</option><option>Instrumento</option><option>Aeronave</option>
+        <option>Documento</option><option>Outro</option>
+      </select>
+    </div>
+    <div class="field"><label>Parceiro / Grupo proprietário</label>
+      <input id="f_partner" list="partnerOptions" placeholder="VAC, ANAC, ou escreve um novo...">
+      <datalist id="partnerOptions"><option value="VAC"><option value="ANAC"></datalist>
+    </div>
+    <div class="field"><label>Materiais</label><input id="f_materiais"></div>
+    <div class="field"><label>Medidas</label><input id="f_medidas"></div>
+    <div class="field"><label>Marcas / n.º de série</label><input id="f_marcas"></div>
+    <div class="field"><label>Descrição</label><textarea id="f_descricao" rows="3"></textarea></div>
+    <div class="field">
+      <label>História — o toque humano</label>
+      <textarea id="f_historia" rows="4" placeholder="Ex: Este motor equipou um Spitfire que voou no Dia D..."></textarea>
+    </div>
+    <div class="field"><label>Proveniência</label><input id="f_proveniencia"></div>
+    <div class="field"><label>Estado de conservação</label><input id="f_estado"></div>
+
+    <button class="btn accent" id="submitBtn" onclick="submitPiece()">Registar peça</button>
+    <div id="formMsg"></div>
+  </div>
+</div>
+
+<script>
+/* ==============================================================
+   ESTADO
+   ============================================================== */
+let session = JSON.parse(localStorage.getItem('vac_museu_session') || 'null'); // {email, token}
+let allPieces = [];
+let currentPartnerFilter = 'ALL';   // ALL | VAC | ANAC ...
+let currentCategoryFilter = 'Todas';
+let lockedPartner = null;           // definido se o hostname for de um parceiro
+let uploadedPhotos = [];
+
+/* ==============================================================
+   DETEÇÃO DE PARCEIRO POR HOSTNAME
+   ============================================================== */
+function detectPartner() {
+  const host = window.location.hostname;
+  if (host.includes('anac')) return 'ANAC';
+  // adicionar aqui outros parceiros no futuro: tap, nav, etc.
+  return null; // null = domínio principal, vê tudo
+}
+
+const THEMES = {
+  VAC: { theme:'vac', name:'Museu VAC', sub:'Vintage Aero Club · Acervo Museológico', badge:'Acervo Público', logo:VAC_LOGO },
+  ANAC:{ theme:'anac', name:'Museu ANAC', sub:'Autoridade Nacional da Aviação Civil', badge:'Peças ANAC', logo:ANAC_LOGO }
+};
+
+function applyTheme(partnerCode) {
+  const t = THEMES[partnerCode] || THEMES.VAC;
+  document.body.setAttribute('data-theme', t.theme);
+  document.getElementById('siteTitle').textContent = t.name;
+  document.getElementById('siteSub').textContent = t.sub;
+  document.getElementById('partnerBadge').textContent = t.badge;
+  const logoEl = document.getElementById('logoCircle');
+  logoEl.innerHTML = t.logo
+    ? `<img src="${t.logo}" alt="logo" onerror="this.parentElement.innerHTML='<span>${partnerCode}</span>'">`
+    : `<span>${partnerCode}</span>`;
+
+  // Loader Tiger Moth — segue o mesmo tema
+  const loaderLogo = document.getElementById('loader-logo-img');
+  const loaderSub = document.getElementById('loader-sub');
+  if (loaderLogo && t.logo) loaderLogo.setAttribute('href', t.logo);
+  if (loaderSub) loaderSub.textContent = t.name + ' · Acervo';
+}
+
+/* ==============================================================
+   CARREGAR DADOS
+   ============================================================== */
+async function loadPieces() {
+  const partnerParam = lockedPartner || 'ALL';
+  try {
+    const res = await fetch(`${API_URL}?partner=${encodeURIComponent(partnerParam)}`);
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error);
+    allPieces = data.pieces;
+  } catch (err) {
+    allPieces = [];
+    document.getElementById('grid').innerHTML = `<div class="empty-state">Não foi possível ligar ao acervo.<br>${err.message}</div>`;
+  }
+  renderPartnerTabs();
+  renderStats();
+  renderCategoryFilter();
+  renderGrid();
+}
+
+/* ==============================================================
+   SEPARADORES DE PARCEIRO (só no domínio principal, sem lock)
+   ============================================================== */
+function renderPartnerTabs() {
+  const el = document.getElementById('partnerTabs');
+  if (lockedPartner) { el.style.display = 'none'; return; }
+
+  const partners = ['ALL', ...new Set(allPieces.map(p => p.Partner))];
+  const labels = { ALL: 'Todos os parceiros' };
+
+  el.style.display = 'flex';
+  el.innerHTML = partners.map(p => `
+    <div class="partner-tab ${p === currentPartnerFilter ? 'on' : ''}" onclick="setPartnerFilter('${p}')">
+      ${labels[p] || p}
+    </div>
+  `).join('');
+
+  // Atualiza as sugestões do campo "Parceiro" no formulário de registo
+  const dl = document.getElementById('partnerOptions');
+  if (dl) {
+    const known = new Set(['VAC', 'ANAC', ...allPieces.map(p => p.Partner).filter(Boolean)]);
+    dl.innerHTML = [...known].map(p => `<option value="${p}">`).join('');
+  }
+}
+
+function setPartnerFilter(p) {
+  currentPartnerFilter = p;
+  renderPartnerTabs();
+  renderStats();
+  renderGrid();
+}
+
+let showInactive = false;
+
+function scoped() {
+  let list = currentPartnerFilter === 'ALL' ? allPieces : allPieces.filter(p => p.Partner === currentPartnerFilter);
+  if (!showInactive) list = list.filter(p => p.EstadoRegisto !== 'Inativo');
+  return list;
+}
+
+function toggleShowInactive(){
+  showInactive = !showInactive;
+  renderCategoryFilter();
+  renderGrid();
+  renderStats();
+}
+
+/* ==============================================================
+   DASHBOARD / STATS
+   ============================================================== */
+function renderStats() {
+  const list = scoped();
+  const categorias = new Set(list.map(p => p.Categoria)).size;
+  const parceiros = new Set(list.map(p => p.Partner)).size;
+  const semFoto = list.filter(p => !p.ImagemURL).length;
+
+  document.getElementById('statsGrid').innerHTML = `
+    <div class="stat-card"><div class="num">${list.length}</div><div class="lbl">Peças</div></div>
+    <div class="stat-card"><div class="num green">${categorias}</div><div class="lbl">Categorias</div></div>
+    <div class="stat-card"><div class="num">${parceiros}</div><div class="lbl">Parceiros</div></div>
+    <div class="stat-card"><div class="num red">${semFoto}</div><div class="lbl">Sem foto</div></div>
+  `;
+}
+
+/* ==============================================================
+   FILTRO POR CATEGORIA + GRELHA
+   ============================================================== */
+function renderCategoryFilter() {
+  const cats = ['Todas', ...new Set(scoped().map(p => p.Categoria).filter(Boolean))];
+  let html = cats.map(c => `
+    <div class="chip ${c === currentCategoryFilter ? 'on' : ''}" onclick="setCategoryFilter('${c}')">${c}</div>
+  `).join('');
+  if (session) {
+    html += `<div class="chip ${showInactive ? 'on' : ''}" style="border-color:var(--red); color:${showInactive ? '' : 'var(--red)'}" onclick="toggleShowInactive()">👁 Mostrar inativas</div>`;
+  }
+  document.getElementById('categoryFilter').innerHTML = html;
+}
+
+function setCategoryFilter(c) {
+  currentCategoryFilter = c;
+  renderCategoryFilter();
+  renderGrid();
+}
+
+function renderGrid() {
+  let list = scoped();
+  if (currentCategoryFilter !== 'Todas') list = list.filter(p => p.Categoria === currentCategoryFilter);
+
+  const grid = document.getElementById('grid');
+  if (!list.length) {
+    grid.innerHTML = `<div class="empty-state">Ainda não há peças registadas nesta vista.</div>`;
+    return;
+  }
+
+  grid.innerHTML = list.map(p => {
+    const firstPhoto = (p.ImagemURL || '').split('|')[0];
+    return `
+    <div class="piece-card ${p.EstadoRegisto === 'Inativo' ? 'inactive' : ''}" onclick='openDetail(${JSON.stringify(p).replace(/'/g,"&apos;")})'>
+      <div class="thumb ${firstPhoto ? '' : 'empty'}">
+        ${firstPhoto ? `<img src="${firstPhoto}" loading="lazy">` : 'sem foto'}
+      </div>
+      <div class="info">
+        <div class="oid mono">${p.ObjectID} ${p.Historia ? '<span title="Tem história">✦</span>' : ''} ${p.Sinalizado ? '<span title="Sinalizado: ' + p.Sinalizado + '">🚩</span>' : ''}</div>
+        <h3>${p.Nome || 'Sem nome'}</h3>
+        <div class="meta">${p.Categoria || ''} · ${p.Partner || ''} ${p.EstadoRegisto === 'Inativo' ? '· INATIVA' : ''}</div>
+      </div>
+    </div>
+  `;}).join('');
+}
+
+// ==============================================================
+// GERAÇÃO DE PDF REAL (jsPDF) — ficha técnica + etiqueta com QR
+// ==============================================================
+let currentPdfDoc = null; // guarda o último PDF gerado para download/partilha/impressão
+
+async function urlToDataURL(url){
+  try {
+    const res = await fetch(url, { mode: 'cors' });
+    const blob = await res.blob();
+    return await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  } catch (e) {
+    return null; // se falhar (ex: sem CORS), o PDF sai sem essa imagem
+  }
+}
+
+async function openPrintOptions(){
+  const p = currentDetailPiece;
+  if (!p) return;
+  show('printOptionsOverlay');
+  document.getElementById('printOptionsButtons').style.display = 'none';
+  document.querySelector('#printOptionsOverlay p').textContent = 'A gerar PDF...';
+
+  currentPdfDoc = await buildFichaPdf(p);
+
+  document.querySelector('#printOptionsOverlay p').textContent =
+    'PDF pronto — escolhe o que queres fazer:';
+  document.getElementById('printOptionsButtons').style.display = 'flex';
+}
+
+async function buildFichaPdf(p){
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const navy = [29, 60, 83], red = [204, 32, 39];
+  const pageW = 210, margin = 16;
+  let y = 20;
+
+  // ---------- Cabeçalho ----------
+  doc.setFont('times', 'bolditalic'); doc.setFontSize(20); doc.setTextColor(...navy);
+  doc.text('Museu VAC', pageW / 2, y, { align: 'center' });
+  y += 6;
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(120);
+  doc.text('FICHA DE REGISTO DE ACERVO · NORMA OBJECT ID', pageW / 2, y, { align: 'center' });
+  y += 3;
+  doc.setDrawColor(...navy); doc.setLineWidth(0.6);
+  doc.line(margin, y, pageW - margin, y);
+  y += 8;
+
+  // ---------- ObjectID + Nome ----------
+  doc.setFont('courier', 'bold'); doc.setFontSize(10); doc.setTextColor(...red);
+  doc.text(p.ObjectID || '', margin, y);
+  y += 7;
+  doc.setFont('times', 'bold'); doc.setFontSize(16); doc.setTextColor(...navy);
+  doc.text(p.Nome || '(sem nome)', margin, y);
+  y += 8;
+
+  // ---------- Tabela de campos ----------
+  const fields = [
+    ['Parceiro', p.Partner], ['Categoria', p.Categoria], ['Materiais', p.Materiais],
+    ['Medidas', p.Medidas], ['Marcas / N.º Série', p.Marcas],
+    ['Proveniência', p.Proveniencia], ['Estado', p.Estado],
+    ['Data Registo', p.DataRegisto], ['Registado por', p.RegistadoPor]
+  ];
+  doc.setFontSize(9);
+  fields.forEach(([label, val]) => {
+    doc.setFont('helvetica', 'bold'); doc.setTextColor(140);
+    doc.text(label.toUpperCase(), margin, y);
+    doc.setFont('helvetica', 'normal'); doc.setTextColor(40);
+    doc.text(String(val || '—'), margin + 45, y);
+    doc.setDrawColor(220); doc.setLineWidth(0.2);
+    doc.line(margin, y + 1.5, pageW - margin, y + 1.5);
+    y += 6;
+  });
+  y += 3;
+
+  // ---------- Descrição ----------
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(140);
+  doc.text('DESCRIÇÃO', margin, y); y += 4;
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(40);
+  const descLines = doc.splitTextToSize(p.Descricao || '(sem descrição)', pageW - margin * 2);
+  doc.text(descLines, margin, y);
+  y += descLines.length * 4.2 + 4;
+
+  // ---------- História (se houver) ----------
+  if (p.Historia) {
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(140);
+    doc.text('HISTÓRIA', margin, y); y += 4;
+    doc.setFont('times', 'italic'); doc.setFontSize(10.5); doc.setTextColor(40);
+    const histLines = doc.splitTextToSize(p.Historia, pageW - margin * 2);
+    doc.text(histLines, margin, y);
+    y += histLines.length * 4.6 + 4;
+  }
+
+  // ---------- Foto (se houver) ----------
+  if (p.ImagemURL) {
+    const firstPhoto = p.ImagemURL.split('|')[0];
+    const imgData = await urlToDataURL(firstPhoto);
+    if (imgData) {
+      try {
+        const imgH = 45;
+        doc.addImage(imgData, 'JPEG', margin, y, 60, imgH, undefined, 'FAST');
+        y += imgH + 6;
+      } catch (e) { /* formato não suportado — ignora */ }
+    }
+  }
+
+  // ---------- Assinaturas ----------
+  y = Math.max(y, 245);
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(80);
+  doc.text('Verificado por: ________________________________', margin, y);
+  doc.text('Data: ____________', pageW - margin - 35, y);
+
+  // ---------- Linha picotada ----------
+  y = 258;
+  doc.setDrawColor(150); doc.setLineDash([1.2, 1.2], 0); doc.setLineWidth(0.4);
+  doc.line(margin, y, pageW - margin, y);
+  doc.setLineDash([], 0);
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(150);
+  doc.text('- - - CORTAR AQUI - - -', pageW / 2, y - 2, { align: 'center' });
+
+  // ---------- Etiqueta com QR ----------
+  const labelY = y + 6, labelH = 26, labelX = margin, labelW = pageW - margin * 2;
+  doc.setDrawColor(...red); doc.setLineDash([1.5, 1.5], 0); doc.setLineWidth(0.5);
+  doc.roundedRect(labelX, labelY, labelW, labelH, 3, 3);
+  doc.setLineDash([], 0);
+
+  // "furos" para o elástico
+  doc.setDrawColor(150);
+  doc.circle(labelX + 6, labelY + labelH / 2, 1.8);
+  doc.circle(labelX + labelW - 6, labelY + labelH / 2, 1.8);
+
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(6.5); doc.setTextColor(140);
+  doc.text('MUSEU VAC', labelX + 14, labelY + 7);
+  doc.setFont('courier', 'bold'); doc.setFontSize(9); doc.setTextColor(...red);
+  doc.text(p.ObjectID || '', labelX + 14, labelY + 12);
+  doc.setFont('times', 'bold'); doc.setFontSize(11); doc.setTextColor(...navy);
+  doc.text(p.Nome || '', labelX + 14, labelY + 18, { maxWidth: labelW - 60 });
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(100);
+  doc.text(p.Categoria || '', labelX + 14, labelY + 22);
+
+  const partnerHost = window.location.hostname;
+  const deepLink = `https://${partnerHost}/?peca=${encodeURIComponent(p.ObjectID)}`;
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=0&data=${encodeURIComponent(deepLink)}`;
+  const qrData = await urlToDataURL(qrUrl);
+  if (qrData) doc.addImage(qrData, 'PNG', labelX + labelW - 24, labelY + 3, 20, 20);
+
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(6.5); doc.setTextColor(150);
+  doc.text('Cortar, prender à peça com elástico + fita nos dois furos', pageW / 2, labelY + labelH + 5, { align: 'center' });
+
+  return doc;
+}
+
+function pdfAction(kind){
+  if (!currentPdfDoc) return;
+  const filename = `${currentDetailPiece.ObjectID}_ficha.pdf`;
+
+  if (kind === 'download') {
+    currentPdfDoc.save(filename);
+    return;
+  }
+  if (kind === 'print') {
+    currentPdfDoc.autoPrint();
+    window.open(currentPdfDoc.output('bloburl'), '_blank');
+    return;
+  }
+  if (kind === 'share') {
+    const blob = currentPdfDoc.output('blob');
+    const file = new File([blob], filename, { type: 'application/pdf' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      navigator.share({ files: [file], title: filename, text: `Ficha da peça ${currentDetailPiece.ObjectID}` })
+        .catch(() => {});
+    } else {
+      // Sem suporte a partilha de ficheiros (ex: desktop) — cai para download
+      currentPdfDoc.save(filename);
+      alert('O teu browser não suporta partilha direta — o PDF foi descarregado, já podes anexá-lo a um email.');
+    }
+  }
+}
+
+// Se a app abrir com ?peca=OBJECTID (ex: alguém a escanear a etiqueta),
+// abre automaticamente a ficha dessa peça assim que os dados carregarem
+function checkDeepLinkPeca_(){
+  const params = new URLSearchParams(window.location.search);
+  const oid = params.get('peca');
+  if (!oid) return;
+  const match = allPieces.find(p => p.ObjectID === oid);
+  if (match) openDetail(match);
+}
+
+function openDetail(p) {
+  currentDetailPiece = p;
+  const isInactive = p.EstadoRegisto === 'Inativo';
+  document.getElementById('detailBody').innerHTML = `
+    ${p.ImagemURL ? (() => {
+      const photos = p.ImagemURL.split('|').filter(Boolean);
+      if (photos.length <= 1) return `<img class="detail-thumb" src="${photos[0] || ''}">`;
+      return `<div class="detail-gallery">${photos.map(url => `<img src="${url}" onclick="event.stopPropagation()">`).join('')}</div>`;
+    })() : ''}
+    <div class="oid mono" style="margin-bottom:4px">${p.ObjectID} ${isInactive ? '<span style="color:var(--red)">· INATIVA</span>' : ''}</div>
+    <h2>${p.Nome || ''}</h2>
+    <div class="detail-row"><span class="k">Categoria</span><span>${p.Categoria || '—'}</span></div>
+    <div class="detail-row"><span class="k">Parceiro</span><span>${p.Partner || '—'}</span></div>
+    <div class="detail-row"><span class="k">Materiais</span><span>${p.Materiais || '—'}</span></div>
+    <div class="detail-row"><span class="k">Medidas</span><span>${p.Medidas || '—'}</span></div>
+    <div class="detail-row"><span class="k">Marcas</span><span>${p.Marcas || '—'}</span></div>
+    <div class="detail-row"><span class="k">Proveniência</span><span>${p.Proveniencia || '—'}</span></div>
+    <div class="detail-row"><span class="k">Estado</span><span>${p.Estado || '—'}</span></div>
+    <p style="margin-top:14px; font-size:13px; line-height:1.5">${p.Descricao || ''}</p>
+    ${p.Historia ? `
+    <div class="story-box">
+      <div class="story-label">A história desta peça</div>
+      <p class="story-text">${p.Historia}</p>
+    </div>` : ''}
+    ${p.Sinalizado ? `<div class="msg err" style="margin-top:12px">🚩 Sinalizado: ${p.Sinalizado}</div>` : ''}
+
+    <button class="btn" style="margin-top:18px" onclick="openPrintOptions()">🖨 Imprimir ficha + etiqueta</button>
+
+    ${session ? `
+    <div style="margin-top:18px; padding-top:14px; border-top:1px dashed var(--line)">
+      <div class="section-lbl" style="padding:0 0 8px">Gestão (só visível para membros)</div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap">
+        <button class="btn" style="flex:1; min-width:100px" onclick="flagPieceUi()">🚩 Sinalizar</button>
+        <button class="btn" style="flex:1; min-width:100px" onclick="togglePieceStatusUi()">${isInactive ? '▶ Reativar' : '⏸ Inativar'}</button>
+        <button class="btn accent" style="flex:1; min-width:100px" onclick="deletePieceUi()">🗑 Apagar</button>
+      </div>
+    </div>` : ''}
+  `;
+  show('detailOverlay');
+}
+
+/* ==============================================================
+   AÇÕES DE GESTÃO — sinalizar, inativar/reativar, apagar
+   ============================================================== */
+async function flagPieceUi(piece){
+  const p = piece || currentDetailPiece;
+  const nota = prompt('Nota de sinalização (motivo da atenção):', p.Sinalizado || '');
+  if (nota === null) return;
+  try {
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'flagPiece', ...session, objectId: p.ObjectID, nota })
+    });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error);
+    hide('detailOverlay');
+    await loadPieces();
+    if (document.getElementById('managementOverlay').classList.contains('show')) renderManagementList();
+  } catch (err) { alert('Erro: ' + err.message); }
+}
+
+async function togglePieceStatusUi(piece){
+  const p = piece || currentDetailPiece;
+  const isInactive = p.EstadoRegisto === 'Inativo';
+  const confirmMsg = isInactive
+    ? 'Reativar esta peça? Volta a aparecer no acervo público.'
+    : 'Inativar esta peça? Deixa de aparecer no acervo público (não é apagada).';
+  if (!confirm(confirmMsg)) return;
+  try {
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'setPieceStatus', ...session, objectId: p.ObjectID, ativo: isInactive })
+    });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error);
+    hide('detailOverlay');
+    await loadPieces();
+    if (document.getElementById('managementOverlay').classList.contains('show')) renderManagementList();
+  } catch (err) { alert('Erro: ' + err.message); }
+}
+
+async function deletePieceUi(piece){
+  const p = piece || currentDetailPiece;
+  if (!confirm('Apagar esta peça definitivamente? Esta ação não pode ser desfeita — considera "Inativar" em vez de apagar.')) return;
+  if (!confirm('Tens mesmo a certeza? Vai ser removida da Sheet para sempre.')) return;
+  try {
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'deletePiece', ...session, objectId: p.ObjectID })
+    });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error);
+    hide('detailOverlay');
+    await loadPieces();
+    if (document.getElementById('managementOverlay').classList.contains('show')) renderManagementList();
+  } catch (err) { alert('Erro: ' + err.message); }
+}
+
+/* ==============================================================
+   LISTA DE GESTÃO — todas as peças, ações rápidas
+   ============================================================== */
+function openManagement(){
+  if (!session) { openLogin(); return; }
+  renderManagementList();
+  show('managementOverlay');
+}
+
+function renderManagementList(){
+  const el = document.getElementById('managementList');
+  if (!allPieces.length) {
+    el.innerHTML = '<div class="empty-state">Sem peças registadas.</div>';
+    return;
+  }
+  el.innerHTML = allPieces.map((p, i) => {
+    const firstPhoto = (p.ImagemURL || '').split('|')[0];
+    const isInactive = p.EstadoRegisto === 'Inativo';
+    return `
+    <div class="mgmt-row ${isInactive ? 'inactive' : ''}">
+      <img class="thumb" src="${firstPhoto || ''}" onerror="this.style.visibility='hidden'" onclick="openDetailByIndex(${i})">
+      <div class="info" onclick="openDetailByIndex(${i})">
+        <div class="oid">${p.ObjectID} ${p.Sinalizado ? '🚩' : ''} ${isInactive ? '· INATIVA' : ''}</div>
+        <div class="nome">${p.Nome || 'Sem nome'}</div>
+      </div>
+      <div class="actions">
+        <button onclick='flagPieceUi(${JSON.stringify(p).replace(/'/g,"&apos;")})' title="Sinalizar">🚩</button>
+        <button onclick='togglePieceStatusUi(${JSON.stringify(p).replace(/'/g,"&apos;")})' title="${isInactive ? 'Reativar' : 'Inativar'}">${isInactive ? '▶' : '⏸'}</button>
+        <button onclick='deletePieceUi(${JSON.stringify(p).replace(/'/g,"&apos;")})' title="Apagar">🗑</button>
+      </div>
+    </div>
+  `;}).join('');
+}
+
+function openDetailByIndex(i){
+  openDetail(allPieces[i]);
+}
+
+/* ==============================================================
+   NAV / OVERLAYS
+   ============================================================== */
+function setTab(tab) {
+  document.querySelectorAll('nav.bottom button').forEach(b => b.classList.remove('on'));
+  event.currentTarget.classList.add('on');
+  if (tab === 'admin') {
+    if (!session) { openLogin(); return; }
+    show('formOverlay');
+  }
+}
+function show(id){ document.getElementById(id).classList.add('show'); }
+function hide(id){ document.getElementById(id).classList.remove('show'); }
+function closeOverlay(e,id){ if(e.target.id===id) hide(id); }
+function openLogin(){ initGoogleSignIn(); show('loginOverlay'); }
+function openMenu(){ renderMenuSession(); show('menuOverlay'); }
+
+function renderMenuSession(){
+  const box = document.getElementById('menuSessionBox');
+  const loginBtn = document.getElementById('menuLoginBtn');
+  const logoutBtn = document.getElementById('menuLogoutBtn');
+  if (!session) {
+    box.innerHTML = '';
+    loginBtn.style.display = 'block';
+    logoutBtn.style.display = 'none';
+    return;
+  }
+  const avatarHtml = session.picture
+    ? `<img src="${session.picture}" alt="">`
+    : `<div class="initial">${(session.name || session.email || '?').trim().charAt(0).toUpperCase()}</div>`;
+  box.innerHTML = `
+    <div class="menu-session">
+      ${avatarHtml}
+      <div>
+        <div class="name">${session.name || 'Membro VAC'}</div>
+        <div class="email">${session.email}</div>
+      </div>
+    </div>`;
+  loginBtn.style.display = 'none';
+  logoutBtn.style.display = 'block';
+}
+
+function logout(){
+  session = null;
+  localStorage.removeItem('vac_museu_session');
+  renderHeaderAvatar();
+  renderMenuSession();
+  hide('menuOverlay');
+}
+
+/* ==============================================================
+   LOGIN — Google Identity Services
+   Padrão robusto com re-tentativa de inicialização (como no VAC Crew
+   Platform): tenta ao carregar a página e novamente quando o overlay
+   de login abre, caso o script do Google ainda não tivesse chegado.
+   ============================================================== */
+let googleInitDone = false;
+
+function initGoogleSignIn() {
+  if (googleInitDone || typeof google === 'undefined' || !google.accounts) return;
+  google.accounts.id.initialize({
+    client_id: GOOGLE_CLIENT_ID,
+    callback: handleCredentialResponse
+  });
+  google.accounts.id.renderButton(
+    document.getElementById('googleBtn'),
+    { theme: 'outline', size: 'large', text: 'signin_with', shape: 'pill' }
+  );
+  googleInitDone = true;
+}
+
+// Decodifica o payload do JWT do Google no browser (igual ao pos.vac/my.vac)
+// só para obter nome/foto a mostrar na UI — a validação real acontece no Code.gs
+function decodeGoogleJWT_(credential) {
+  try {
+    const base64 = credential.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    const padded = base64 + '=='.slice(0, (4 - base64.length % 4) % 4);
+    return JSON.parse(atob(padded));
+  } catch (e) { return {}; }
+}
+
+function renderHeaderAvatar() {
+  const el = document.getElementById('headerAvatar');
+  if (!session) { el.style.display = 'none'; return; }
+  el.style.display = 'flex';
+  if (session.picture) {
+    el.innerHTML = `<img src="${session.picture}" alt="">`;
+  } else {
+    const initial = (session.name || session.email || '?').trim().charAt(0).toUpperCase();
+    el.textContent = initial;
+  }
+}
+
+async function handleCredentialResponse(response) {
+  const msgEl = document.getElementById('loginMsg');
+  msgEl.innerHTML = '';
+  const payload = decodeGoogleJWT_(response.credential);
+  try {
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'googleLogin', idToken: response.credential })
+    });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error);
+
+    session = { email: data.email, token: data.token, name: payload.name || '', picture: payload.picture || '' };
+    localStorage.setItem('vac_museu_session', JSON.stringify(session));
+    renderHeaderAvatar();
+    msgEl.innerHTML = `<div class="msg ok">Sessão iniciada como ${data.email}</div>`;
+    setTimeout(() => { hide('loginOverlay'); show('formOverlay'); }, 600);
+  } catch (err) {
+    msgEl.innerHTML = `<div class="msg err">${err.message}</div>`;
+  }
+}
+
+window.addEventListener('load', initGoogleSignIn);
+
+/* ==============================================================
+   UPLOAD DE IMAGENS — várias fotos por peça, comprime cada uma
+   no cliente antes de enviar. uploadedPhotos = [{base64, dataUrl}]
+   ============================================================== */
+function compressFile_(file){
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        const maxW = 1280;
+        const scale = Math.min(1, maxW / img.width);
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width * scale;
+        canvas.height = img.height * scale;
+        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+        resolve({ base64: dataUrl.split(',')[1], dataUrl });
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+async function handleFiles(evt){
+  const files = Array.from(evt.target.files || []);
+  for (const file of files) {
+    const photo = await compressFile_(file);
+    uploadedPhotos.push(photo);
+  }
+  evt.target.value = ''; // permite escolher o mesmo ficheiro outra vez se precisar
+  renderPhotoStrip();
+}
+
+function renderPhotoStrip(){
+  const el = document.getElementById('photoStrip');
+  el.innerHTML = uploadedPhotos.map((p, i) => `
+    <div class="photo-thumb">
+      <img src="${p.dataUrl}">
+      <button type="button" class="rm" onclick="removePhoto(${i})">✕</button>
+    </div>
+  `).join('');
+}
+
+function removePhoto(i){
+  uploadedPhotos.splice(i, 1);
+  renderPhotoStrip();
+}
+
+/* ==============================================================
+   SUBMETER PEÇA (upload imagem -> registar linha na Sheet)
+   ============================================================== */
+async function submitPiece() {
+  const btn = document.getElementById('submitBtn');
+  const msgEl = document.getElementById('formMsg');
+  msgEl.innerHTML = '';
+  btn.disabled = true;
+  btn.textContent = 'A guardar...';
+  showLoader('A processar foto', 'A comprimir e enviar imagem...');
+
+  try {
+    const urls = [];
+    for (let i = 0; i < uploadedPhotos.length; i++) {
+      showLoader('A processar foto', `Imagem ${i + 1} de ${uploadedPhotos.length}...`);
+      const upRes = await fetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'uploadImage', ...session,
+          base64: uploadedPhotos[i].base64, filename: `peca_${i + 1}.jpg`
+        })
+      });
+      const upData = await upRes.json();
+      if (!upData.ok) throw new Error(upData.error);
+      urls.push(upData.url);
+    }
+    const imagemUrl = urls.join('|'); // várias fotos guardadas na mesma célula, separadas por "|"
+
+    showLoader('A registar peça', 'Google Sheets');
+    const payload = {
+      action: 'addPiece', ...session,
+      partner: document.getElementById('f_partner').value,
+      nome: document.getElementById('f_nome').value,
+      categoria: document.getElementById('f_categoria').value,
+      materiais: document.getElementById('f_materiais').value,
+      medidas: document.getElementById('f_medidas').value,
+      marcas: document.getElementById('f_marcas').value,
+      descricao: document.getElementById('f_descricao').value,
+      historia: document.getElementById('f_historia').value,
+      proveniencia: document.getElementById('f_proveniencia').value,
+      estado: document.getElementById('f_estado').value,
+      imagemUrl
+    };
+
+    const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify(payload) });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error);
+
+    msgEl.innerHTML = `<div class="msg ok">Peça registada: ${data.objectId}</div>`;
+    uploadedPhotos = [];
+    renderPhotoStrip();
+    ['f_nome','f_materiais','f_medidas','f_marcas','f_descricao','f_historia','f_proveniencia','f_estado']
+      .forEach(id => document.getElementById(id).value = '');
+
+    loadPieces();
+  } catch (err) {
+    msgEl.innerHTML = `<div class="msg err">${err.message}</div>`;
+  } finally {
+    hideLoader();
+    btn.disabled = false;
+    btn.textContent = 'Registar peça';
+  }
+}
+
+        // ===== Loader Tiger Moth =====
+        function showLoader(msg, sub) {
+            const el = document.getElementById('vac-loader');
+            const m = document.getElementById('loader-msg');
+            const s = document.getElementById('loader-sub');
+            if (m && msg) m.textContent = msg;
+            if (s && sub) s.textContent = sub;
+            if (el) el.classList.add('show');
+        }
+        function hideLoader() {
+            const el = document.getElementById('vac-loader');
+            if (el) el.classList.remove('show');
+        }
+        function initLoaderAnim() {
+          const CX = 140, CY = 140, R = 100;
+          const ORBIT_S = 6, SELF_S = 6;
+          const orbitSpeed = 360 / ORBIT_S;
+          const selfSpeed  = 360 / SELF_S;
+          const SMOKE_OFF     = [8, 20, 36, 58, 88, 128, 178, 238, 305];
+          const SMOKE_OPACITY = [0.85, 0.72, 0.60, 0.48, 0.36, 0.24, 0.14, 0.07, 0.02];
+          let orbitAngle = 0, selfAngle = 0, lastTime = null;
+          function loaderTick(ts) {
+            if (!lastTime) lastTime = ts;
+            const dt = Math.min((ts - lastTime) / 1000, 0.05);
+            lastTime = ts;
+            orbitAngle += orbitSpeed * dt;
+            selfAngle  += selfSpeed  * dt;
+            const oRad = (orbitAngle - 90) * Math.PI / 180;
+            const px = CX + R * Math.cos(oRad);
+            const py = CY + R * Math.sin(oRad);
+            const pg = document.getElementById('planeGroup');
+            const ps = document.getElementById('planeShape');
+            if (pg) pg.setAttribute('transform', `translate(${px.toFixed(2)},${py.toFixed(2)})`);
+            if (ps) ps.setAttribute('transform', `rotate(${selfAngle.toFixed(2)})`);
+            for (let i = 0; i < SMOKE_OFF.length; i++) {
+              const ang = orbitAngle - SMOKE_OFF[i];
+              const rad = (ang - 90) * Math.PI / 180;
+              const sx  = CX + R * Math.cos(rad);
+              const sy  = CY + R * Math.sin(rad);
+              const sg  = document.getElementById('s' + i);
+              if (sg) {
+                sg.setAttribute('transform', `translate(${sx.toFixed(2)},${sy.toFixed(2)})`);
+                const c = sg.querySelector('circle');
+                if (c) c.setAttribute('opacity', SMOKE_OPACITY[i]);
+              }
+            }
+            requestAnimationFrame(loaderTick);
+          }
+          requestAnimationFrame(loaderTick);
+        }
+
+/* ==============================================================
+   SWIPE PARA FECHAR — arrastar de cima para baixo fecha o sheet,
+   tal como nos ecrãs nativos. Só ativa se o sheet já estiver no
+   topo do seu próprio scroll (não interfere com scroll interno).
+   ============================================================== */
+function setupSwipeToClose(){
+  document.querySelectorAll('.overlay .sheet').forEach(sheet => {
+    let startY = 0, currentY = 0, dragging = false;
+    const overlay = sheet.parentElement;
+
+    sheet.addEventListener('touchstart', e => {
+      if (sheet.scrollTop > 0) { dragging = false; return; }
+      startY = e.touches[0].clientY;
+      dragging = true;
+      sheet.style.transition = 'none';
+    }, { passive: true });
+
+    sheet.addEventListener('touchmove', e => {
+      if (!dragging) return;
+      currentY = e.touches[0].clientY - startY;
+      if (currentY > 0) sheet.style.transform = `translateY(${currentY}px)`;
+    }, { passive: true });
+
+    sheet.addEventListener('touchend', () => {
+      if (!dragging) return;
+      dragging = false;
+      sheet.style.transition = 'transform .25s ease';
+      if (currentY > 100) {
+        sheet.style.transform = `translateY(100%)`;
+        setTimeout(() => { overlay.classList.remove('show'); sheet.style.transform = ''; }, 200);
+      } else {
+        sheet.style.transform = '';
+      }
+      currentY = 0;
+    });
+  });
+}
+(function init() {
+  lockedPartner = detectPartner();
+  applyTheme(lockedPartner || 'VAC');
+  if (lockedPartner) currentPartnerFilter = lockedPartner;
+  initLoaderAnim();
+  renderHeaderAvatar();
+  setupSwipeToClose();
+  showLoader('A sincronizar', 'A carregar o acervo...');
+  loadPieces().finally(() => { hideLoader(); checkDeepLinkPeca_(); });
+
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js').catch(() => {});
+    });
+  }
+})();
+</script>
+<!-- TEMPLATE DE IMPRESSÃO — ficha A4 + etiqueta destacável com QR -->
+<div id="printArea">
+  <div class="print-page">
+    <div class="print-header">
+      <div class="print-museu">MUSEU VAC</div>
+      <div class="print-subtitle">Ficha de Registo de Acervo · Norma Object ID</div>
+    </div>
+
+    <div class="print-oid" id="pf-oid"></div>
+    <div class="print-nome" id="pf-nome"></div>
+
+    <table class="print-table">
+      <tr><td class="k">Parceiro</td><td id="pf-partner"></td></tr>
+      <tr><td class="k">Categoria</td><td id="pf-categoria"></td></tr>
+      <tr><td class="k">Materiais</td><td id="pf-materiais"></td></tr>
+      <tr><td class="k">Medidas</td><td id="pf-medidas"></td></tr>
+      <tr><td class="k">Marcas / N.º Série</td><td id="pf-marcas"></td></tr>
+      <tr><td class="k">Proveniência</td><td id="pf-proveniencia"></td></tr>
+      <tr><td class="k">Estado</td><td id="pf-estado"></td></tr>
+      <tr><td class="k">Data Registo</td><td id="pf-data"></td></tr>
+      <tr><td class="k">Registado por</td><td id="pf-registadopor"></td></tr>
+    </table>
+
+    <div class="print-section-label">Descrição</div>
+    <div class="print-text" id="pf-descricao"></div>
+
+    <div id="pf-historia-wrap">
+      <div class="print-section-label">História</div>
+      <div class="print-text print-historia" id="pf-historia"></div>
+    </div>
+
+    <div class="print-signatures">
+      <div class="print-sig">Verificado por: ______________________</div>
+      <div class="print-sig">Data: __________</div>
+    </div>
+
+    <div class="print-cutline">
+      <span>✂ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -</span>
+    </div>
+
+    <div class="print-label">
+      <div class="print-label-hole"></div>
+      <div class="print-label-info">
+        <div class="print-label-museu">MUSEU VAC</div>
+        <div class="print-label-oid" id="pf-label-oid"></div>
+        <div class="print-label-nome" id="pf-label-nome"></div>
+        <div class="print-label-cat" id="pf-label-cat"></div>
+      </div>
+      <img class="print-label-qr" id="pf-qr" alt="QR">
+      <div class="print-label-hole"></div>
+    </div>
+    <div class="print-label-hint">Cortar, dobrar ao meio se necessário, e prender à peça com elástico + fita nos dois furos</div>
+  </div>
+</div>
+
+</body>
+</html>
