@@ -1,4 +1,32 @@
 <!DOCTYPE html>
+<!--
+============================================================
+MUSEU VAC — Frontend (PWA single-file)
+============================================================
+VERSÃO:  1.3.0
+GRUPO:   Vintage Aero Club — Museu Digital
+DATA:    2026-07-09 11:10
+AUTOR:   Pedro Nunes (com apoio de Claude)
+------------------------------------------------------------
+HISTÓRICO DE VERSÕES
+1.3.0  2026-07-09 11:10 — Reserva de ObjectID antes do upload
+       das fotos (alinhado com Code.gs 1.3.0), para organizar
+       imagens em pecas/OBJECTID/ no GitHub.
+1.2.0  2026-07-09        — Modal de gestão completo (lista com
+       sinalizar/inativar/apagar), câmara + galeria separadas,
+       múltiplas fotos por peça.
+1.1.0  2026-07-04        — Avatar de sessão no cabeçalho, gesto
+       de swipe para fechar sheets, parceiro editável no registo,
+       filtro de peças inativas, impressão de ficha+etiqueta em
+       PDF real (jsPDF) com QR code.
+1.0.0  2026-07-03        — Primeira versão: multi-tenant por
+       parceiro (hostname), login Google OAuth, loader Tiger
+       Moth, dashboard, galeria, registo de peças.
+------------------------------------------------------------
+Corresponde ao Code.gs — confirma sempre que as versões dos
+dois ficheiros sobem juntas quando há mudanças de API entre eles.
+============================================================
+-->
 <html lang="pt-PT">
 <head>
 <meta charset="UTF-8">
@@ -14,6 +42,8 @@
 <style>
 /* ==============================================================
    CONFIG — editar aqui para apontar para o teu Apps Script
+   (isto não é a versão da app — a versão está no comentário
+   grande no topo do ficheiro)
    ============================================================== */
 </style>
 <script>
@@ -22,6 +52,8 @@
   const VAC_LOGO = './logo-vac-color.png'; // ficheiro subido diretamente ao repo Vac-Museu
   const ANAC_LOGO = ''; // colocar URL do logo real da ANAC quando disponível
   const GOOGLE_CLIENT_ID = '363576677824-ivjutejofafic0hdu1bstqr3p9ir1m33.apps.googleusercontent.com';
+  const APP_VERSION = '1.3.0';
+  const APP_BUILD_DATE = '2026-07-09 11:10';
 </script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -207,6 +239,31 @@
     margin-bottom:14px; cursor:pointer; background:var(--panel);
   }
   .uploadbox img{max-width:100%; max-height:140px; border-radius:8px;}
+  .photo-strip{ display:flex; gap:8px; overflow-x:auto; padding-bottom:4px; margin-bottom:14px; }
+  .photo-strip:empty{ display:none; }
+  .photo-thumb{ position:relative; width:72px; height:72px; flex-shrink:0; border-radius:8px; overflow:hidden; }
+  .photo-thumb img{ width:100%; height:100%; object-fit:cover; }
+  .photo-thumb .rm{
+    position:absolute; top:2px; right:2px; width:18px; height:18px; border-radius:50%;
+    background:rgba(0,0,0,0.6); color:#fff; border:none; font-size:11px; line-height:18px;
+    text-align:center; cursor:pointer; padding:0;
+  }
+  .detail-gallery{ display:flex; gap:8px; overflow-x:auto; margin-bottom:14px; }
+  .detail-gallery img{ width:120px; height:120px; object-fit:cover; border-radius:10px; flex-shrink:0; }
+  .mgmt-row{
+    display:flex; align-items:center; gap:10px; padding:10px; margin-bottom:8px;
+    background:var(--panel); border-radius:10px; border:1px solid var(--line); cursor:pointer;
+  }
+  .mgmt-row.inactive{ opacity:.55; }
+  .mgmt-row .thumb{ width:44px; height:44px; border-radius:8px; object-fit:cover; background:var(--bg); flex-shrink:0; }
+  .mgmt-row .info{ flex:1; min-width:0; }
+  .mgmt-row .info .oid{ font-family:'IBM Plex Mono',monospace; font-size:9px; color:var(--accent); }
+  .mgmt-row .info .nome{ font-size:13px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .mgmt-row .actions{ display:flex; gap:4px; flex-shrink:0; }
+  .mgmt-row .actions button{
+    width:30px; height:30px; border-radius:6px; border:1px solid var(--line);
+    background:var(--bg); font-size:13px; cursor:pointer;
+  }
   .msg{font-size:12px; margin-top:8px; padding:8px 10px; border-radius:6px;}
   .msg.err{background:#fbe4e4; color:var(--red);}
   .msg.ok{background:#e6f0e2; color:var(--green);}
@@ -413,7 +470,7 @@
 <nav class="bottom">
   <button class="on" onclick="setTab('galeria')"><span class="icon">🗂</span>Galeria</button>
   <button onclick="setTab('admin')"><span class="icon">＋</span>Registar</button>
-  <button onclick="openLogin()"><span class="icon">👤</span>Gestão</button>
+  <button onclick="openManagement()"><span class="icon">👤</span>Gestão</button>
 </nav>
 
 <!-- DETALHE DA PEÇA -->
@@ -421,6 +478,16 @@
   <div class="sheet" onclick="event.stopPropagation()">
     <button class="sheet-close" onclick="hide('detailOverlay')"></button>
     <div id="detailBody"></div>
+  </div>
+</div>
+
+<!-- LISTA DE GESTÃO -->
+<div class="overlay" id="managementOverlay" onclick="closeOverlay(event,'managementOverlay')">
+  <div class="sheet" onclick="event.stopPropagation()">
+    <button class="sheet-close" onclick="hide('managementOverlay')"></button>
+    <h2>Gestão do Acervo</h2>
+    <p style="font-size:12px; opacity:.6; margin-bottom:14px">Todas as peças, incluindo inativas. Toca numa linha para abrir a ficha completa.</p>
+    <div id="managementList"></div>
   </div>
 </div>
 
@@ -460,6 +527,7 @@
     </div>
     <button class="btn" id="menuLoginBtn" style="margin-top:18px" onclick="hide('menuOverlay'); openLogin()">Gestão do acervo (login)</button>
     <button class="btn" id="menuLogoutBtn" style="margin-top:10px; display:none; background:transparent; color:var(--red); border:1px solid var(--red)" onclick="logout()">Terminar sessão</button>
+    <div class="mono" style="text-align:center; font-size:10px; opacity:.4; margin-top:16px" id="appVersionLabel"></div>
   </div>
 </div>
 
@@ -480,10 +548,13 @@
     <button class="sheet-close" onclick="hide('formOverlay')"></button>
     <h2>Registar peça</h2>
 
-    <div class="uploadbox" id="uploadBox" onclick="document.getElementById('fileInput').click()">
-      <div id="uploadPreview">📷 Toca para carregar foto</div>
+    <div style="display:flex; gap:10px; margin-bottom:10px">
+      <button type="button" class="btn" style="flex:1" onclick="document.getElementById('cameraInput').click()">📷 Tirar foto</button>
+      <button type="button" class="btn" style="flex:1" onclick="document.getElementById('galleryInput').click()">🖼 Da galeria</button>
     </div>
-    <input type="file" id="fileInput" accept="image/*" style="display:none" onchange="handleFile(event)">
+    <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none" onchange="handleFiles(event)">
+    <input type="file" id="galleryInput" accept="image/*" multiple style="display:none" onchange="handleFiles(event)">
+    <div id="photoStrip" class="photo-strip"></div>
 
     <div class="field"><label>Nome / título</label><input id="f_nome"></div>
     <div class="field"><label>Categoria</label>
@@ -521,7 +592,7 @@ let allPieces = [];
 let currentPartnerFilter = 'ALL';   // ALL | VAC | ANAC ...
 let currentCategoryFilter = 'Todas';
 let lockedPartner = null;           // definido se o hostname for de um parceiro
-let uploadedBase64 = null;
+let uploadedPhotos = [];
 
 /* ==============================================================
    DETEÇÃO DE PARCEIRO POR HOSTNAME
@@ -670,10 +741,12 @@ function renderGrid() {
     return;
   }
 
-  grid.innerHTML = list.map(p => `
+  grid.innerHTML = list.map(p => {
+    const firstPhoto = (p.ImagemURL || '').split('|')[0];
+    return `
     <div class="piece-card ${p.EstadoRegisto === 'Inativo' ? 'inactive' : ''}" onclick='openDetail(${JSON.stringify(p).replace(/'/g,"&apos;")})'>
-      <div class="thumb ${p.ImagemURL ? '' : 'empty'}">
-        ${p.ImagemURL ? `<img src="${p.ImagemURL}" loading="lazy">` : 'sem foto'}
+      <div class="thumb ${firstPhoto ? '' : 'empty'}">
+        ${firstPhoto ? `<img src="${firstPhoto}" loading="lazy">` : 'sem foto'}
       </div>
       <div class="info">
         <div class="oid mono">${p.ObjectID} ${p.Historia ? '<span title="Tem história">✦</span>' : ''} ${p.Sinalizado ? '<span title="Sinalizado: ' + p.Sinalizado + '">🚩</span>' : ''}</div>
@@ -681,7 +754,7 @@ function renderGrid() {
         <div class="meta">${p.Categoria || ''} · ${p.Partner || ''} ${p.EstadoRegisto === 'Inativo' ? '· INATIVA' : ''}</div>
       </div>
     </div>
-  `).join('');
+  `;}).join('');
 }
 
 // ==============================================================
@@ -783,7 +856,8 @@ async function buildFichaPdf(p){
 
   // ---------- Foto (se houver) ----------
   if (p.ImagemURL) {
-    const imgData = await urlToDataURL(p.ImagemURL);
+    const firstPhoto = p.ImagemURL.split('|')[0];
+    const imgData = await urlToDataURL(firstPhoto);
     if (imgData) {
       try {
         const imgH = 45;
@@ -880,7 +954,11 @@ function openDetail(p) {
   currentDetailPiece = p;
   const isInactive = p.EstadoRegisto === 'Inativo';
   document.getElementById('detailBody').innerHTML = `
-    ${p.ImagemURL ? `<img class="detail-thumb" src="${p.ImagemURL}">` : ''}
+    ${p.ImagemURL ? (() => {
+      const photos = p.ImagemURL.split('|').filter(Boolean);
+      if (photos.length <= 1) return `<img class="detail-thumb" src="${photos[0] || ''}">`;
+      return `<div class="detail-gallery">${photos.map(url => `<img src="${url}" onclick="event.stopPropagation()">`).join('')}</div>`;
+    })() : ''}
     <div class="oid mono" style="margin-bottom:4px">${p.ObjectID} ${isInactive ? '<span style="color:var(--red)">· INATIVA</span>' : ''}</div>
     <h2>${p.Nome || ''}</h2>
     <div class="detail-row"><span class="k">Categoria</span><span>${p.Categoria || '—'}</span></div>
@@ -916,23 +994,26 @@ function openDetail(p) {
 /* ==============================================================
    AÇÕES DE GESTÃO — sinalizar, inativar/reativar, apagar
    ============================================================== */
-async function flagPieceUi(){
-  const nota = prompt('Nota de sinalização (motivo da atenção):', currentDetailPiece.Sinalizado || '');
+async function flagPieceUi(piece){
+  const p = piece || currentDetailPiece;
+  const nota = prompt('Nota de sinalização (motivo da atenção):', p.Sinalizado || '');
   if (nota === null) return;
   try {
     const res = await fetch(API_URL, {
       method: 'POST',
-      body: JSON.stringify({ action: 'flagPiece', ...session, objectId: currentDetailPiece.ObjectID, nota })
+      body: JSON.stringify({ action: 'flagPiece', ...session, objectId: p.ObjectID, nota })
     });
     const data = await res.json();
     if (!data.ok) throw new Error(data.error);
     hide('detailOverlay');
-    loadPieces();
+    await loadPieces();
+    if (document.getElementById('managementOverlay').classList.contains('show')) renderManagementList();
   } catch (err) { alert('Erro: ' + err.message); }
 }
 
-async function togglePieceStatusUi(){
-  const isInactive = currentDetailPiece.EstadoRegisto === 'Inativo';
+async function togglePieceStatusUi(piece){
+  const p = piece || currentDetailPiece;
+  const isInactive = p.EstadoRegisto === 'Inativo';
   const confirmMsg = isInactive
     ? 'Reativar esta peça? Volta a aparecer no acervo público.'
     : 'Inativar esta peça? Deixa de aparecer no acervo público (não é apagada).';
@@ -940,28 +1021,69 @@ async function togglePieceStatusUi(){
   try {
     const res = await fetch(API_URL, {
       method: 'POST',
-      body: JSON.stringify({ action: 'setPieceStatus', ...session, objectId: currentDetailPiece.ObjectID, ativo: isInactive })
+      body: JSON.stringify({ action: 'setPieceStatus', ...session, objectId: p.ObjectID, ativo: isInactive })
     });
     const data = await res.json();
     if (!data.ok) throw new Error(data.error);
     hide('detailOverlay');
-    loadPieces();
+    await loadPieces();
+    if (document.getElementById('managementOverlay').classList.contains('show')) renderManagementList();
   } catch (err) { alert('Erro: ' + err.message); }
 }
 
-async function deletePieceUi(){
+async function deletePieceUi(piece){
+  const p = piece || currentDetailPiece;
   if (!confirm('Apagar esta peça definitivamente? Esta ação não pode ser desfeita — considera "Inativar" em vez de apagar.')) return;
   if (!confirm('Tens mesmo a certeza? Vai ser removida da Sheet para sempre.')) return;
   try {
     const res = await fetch(API_URL, {
       method: 'POST',
-      body: JSON.stringify({ action: 'deletePiece', ...session, objectId: currentDetailPiece.ObjectID })
+      body: JSON.stringify({ action: 'deletePiece', ...session, objectId: p.ObjectID })
     });
     const data = await res.json();
     if (!data.ok) throw new Error(data.error);
     hide('detailOverlay');
-    loadPieces();
+    await loadPieces();
+    if (document.getElementById('managementOverlay').classList.contains('show')) renderManagementList();
   } catch (err) { alert('Erro: ' + err.message); }
+}
+
+/* ==============================================================
+   LISTA DE GESTÃO — todas as peças, ações rápidas
+   ============================================================== */
+function openManagement(){
+  if (!session) { openLogin(); return; }
+  renderManagementList();
+  show('managementOverlay');
+}
+
+function renderManagementList(){
+  const el = document.getElementById('managementList');
+  if (!allPieces.length) {
+    el.innerHTML = '<div class="empty-state">Sem peças registadas.</div>';
+    return;
+  }
+  el.innerHTML = allPieces.map((p, i) => {
+    const firstPhoto = (p.ImagemURL || '').split('|')[0];
+    const isInactive = p.EstadoRegisto === 'Inativo';
+    return `
+    <div class="mgmt-row ${isInactive ? 'inactive' : ''}">
+      <img class="thumb" src="${firstPhoto || ''}" onerror="this.style.visibility='hidden'" onclick="openDetailByIndex(${i})">
+      <div class="info" onclick="openDetailByIndex(${i})">
+        <div class="oid">${p.ObjectID} ${p.Sinalizado ? '🚩' : ''} ${isInactive ? '· INATIVA' : ''}</div>
+        <div class="nome">${p.Nome || 'Sem nome'}</div>
+      </div>
+      <div class="actions">
+        <button onclick='flagPieceUi(${JSON.stringify(p).replace(/'/g,"&apos;")})' title="Sinalizar">🚩</button>
+        <button onclick='togglePieceStatusUi(${JSON.stringify(p).replace(/'/g,"&apos;")})' title="${isInactive ? 'Reativar' : 'Inativar'}">${isInactive ? '▶' : '⏸'}</button>
+        <button onclick='deletePieceUi(${JSON.stringify(p).replace(/'/g,"&apos;")})' title="Apagar">🗑</button>
+      </div>
+    </div>
+  `;}).join('');
+}
+
+function openDetailByIndex(i){
+  openDetail(allPieces[i]);
 }
 
 /* ==============================================================
@@ -979,7 +1101,7 @@ function show(id){ document.getElementById(id).classList.add('show'); }
 function hide(id){ document.getElementById(id).classList.remove('show'); }
 function closeOverlay(e,id){ if(e.target.id===id) hide(id); }
 function openLogin(){ initGoogleSignIn(); show('loginOverlay'); }
-function openMenu(){ renderMenuSession(); show('menuOverlay'); }
+function openMenu(){ renderMenuSession(); document.getElementById('appVersionLabel').textContent = 'v' + APP_VERSION + ' · ' + APP_BUILD_DATE; show('menuOverlay'); }
 
 function renderMenuSession(){
   const box = document.getElementById('menuSessionBox');
@@ -1082,29 +1204,53 @@ async function handleCredentialResponse(response) {
 window.addEventListener('load', initGoogleSignIn);
 
 /* ==============================================================
-   UPLOAD DE IMAGEM (comprime no cliente antes de enviar)
+   UPLOAD DE IMAGENS — várias fotos por peça, comprime cada uma
+   no cliente antes de enviar. uploadedPhotos = [{base64, dataUrl}]
    ============================================================== */
-function handleFile(evt) {
-  const file = evt.target.files[0];
-  if (!file) return;
-
-  const reader = new FileReader();
-  reader.onload = e => {
-    const img = new Image();
-    img.onload = () => {
-      const maxW = 1280;
-      const scale = Math.min(1, maxW / img.width);
-      const canvas = document.createElement('canvas');
-      canvas.width = img.width * scale;
-      canvas.height = img.height * scale;
-      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
-      uploadedBase64 = dataUrl.split(',')[1];
-      document.getElementById('uploadPreview').innerHTML = `<img src="${dataUrl}">`;
+function compressFile_(file){
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        const maxW = 1280;
+        const scale = Math.min(1, maxW / img.width);
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width * scale;
+        canvas.height = img.height * scale;
+        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+        resolve({ base64: dataUrl.split(',')[1], dataUrl });
+      };
+      img.src = e.target.result;
     };
-    img.src = e.target.result;
-  };
-  reader.readAsDataURL(file);
+    reader.readAsDataURL(file);
+  });
+}
+
+async function handleFiles(evt){
+  const files = Array.from(evt.target.files || []);
+  for (const file of files) {
+    const photo = await compressFile_(file);
+    uploadedPhotos.push(photo);
+  }
+  evt.target.value = ''; // permite escolher o mesmo ficheiro outra vez se precisar
+  renderPhotoStrip();
+}
+
+function renderPhotoStrip(){
+  const el = document.getElementById('photoStrip');
+  el.innerHTML = uploadedPhotos.map((p, i) => `
+    <div class="photo-thumb">
+      <img src="${p.dataUrl}">
+      <button type="button" class="rm" onclick="removePhoto(${i})">✕</button>
+    </div>
+  `).join('');
+}
+
+function removePhoto(i){
+  uploadedPhotos.splice(i, 1);
+  renderPhotoStrip();
 }
 
 /* ==============================================================
@@ -1116,27 +1262,37 @@ async function submitPiece() {
   msgEl.innerHTML = '';
   btn.disabled = true;
   btn.textContent = 'A guardar...';
-  showLoader('A processar foto', 'A comprimir e enviar imagem...');
+  const partner = document.getElementById('f_partner').value;
 
   try {
-    let imagemUrl = '';
-    if (uploadedBase64) {
+    showLoader('A registar peça', 'A reservar ObjectID...');
+    const reserveRes = await fetch(API_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'reserveObjectId', ...session, partner })
+    });
+    const reserveData = await reserveRes.json();
+    if (!reserveData.ok) throw new Error(reserveData.error);
+    const objectId = reserveData.objectId;
+
+    const urls = [];
+    for (let i = 0; i < uploadedPhotos.length; i++) {
+      showLoader('A processar foto', `Imagem ${i + 1} de ${uploadedPhotos.length}...`);
       const upRes = await fetch(API_URL, {
         method: 'POST',
         body: JSON.stringify({
-          action: 'uploadImage', ...session,
-          base64: uploadedBase64, filename: 'peca.jpg'
+          action: 'uploadImage', ...session, objectId,
+          base64: uploadedPhotos[i].base64, filename: `foto_${i + 1}.jpg`
         })
       });
       const upData = await upRes.json();
       if (!upData.ok) throw new Error(upData.error);
-      imagemUrl = upData.url;
+      urls.push(upData.url);
     }
+    const imagemUrl = urls.join('|'); // várias fotos guardadas na mesma célula, separadas por "|"
 
     showLoader('A registar peça', 'Google Sheets');
     const payload = {
-      action: 'addPiece', ...session,
-      partner: document.getElementById('f_partner').value,
+      action: 'addPiece', ...session, objectId, partner,
       nome: document.getElementById('f_nome').value,
       categoria: document.getElementById('f_categoria').value,
       materiais: document.getElementById('f_materiais').value,
@@ -1154,8 +1310,8 @@ async function submitPiece() {
     if (!data.ok) throw new Error(data.error);
 
     msgEl.innerHTML = `<div class="msg ok">Peça registada: ${data.objectId}</div>`;
-    uploadedBase64 = null;
-    document.getElementById('uploadPreview').innerHTML = '📷 Toca para carregar foto';
+    uploadedPhotos = [];
+    renderPhotoStrip();
     ['f_nome','f_materiais','f_medidas','f_marcas','f_descricao','f_historia','f_proveniencia','f_estado']
       .forEach(id => document.getElementById(id).value = '');
 
