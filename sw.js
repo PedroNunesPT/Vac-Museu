@@ -1,10 +1,21 @@
 /**
+ * ============================================================
  * MUSEU VAC — Service Worker
- * VERSÃO: 2.0.0
- * Padrão: HTML e chamadas à API (Apps Script) NUNCA em cache — sempre
- * da rede, para a lista de peças estar sempre atualizada. Só os
- * ficheiros verdadeiramente estáticos (ícones/logo/manifest) usam
- * cache-first. Corrige bug da v1.0.0 que fazia cache da API por engano.
+ * ============================================================
+ * VERSÃO:  2.0.0
+ * GRUPO:   Vintage Aero Club — Museu Digital
+ * DATA:    2026-07-10 18:21
+ * AUTOR:   Pedro Nunes (com apoio de Claude)
+ * ------------------------------------------------------------
+ * HISTÓRICO DE VERSÕES
+ * 2.0.0  2026-07-10 00:00 — Corrigido bug grave: chamadas à API
+ *        (script.google.com) estavam a ser tratadas como
+ *        ficheiros estáticos e ficavam em cache, mostrando dados
+ *        antigos (peças/fotos novas não apareciam). Agora API e
+ *        HTML são sempre da rede, nunca em cache.
+ * 1.0.0  2026-07-03        — Primeira versão: HTML network-first,
+ *        estáticos (ícones/logo) cache-first.
+ * ------------------------------------------------------------
  */
 const CACHE_NAME = 'museu-vac-v2';
 const STATIC_ASSETS = [
