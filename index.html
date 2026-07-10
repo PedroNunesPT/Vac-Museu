@@ -3,12 +3,22 @@
 ============================================================
 MUSEU VAC — Frontend (PWA single-file)
 ============================================================
-VERSÃO:  1.4.0
+VERSÃO:  1.6.0
 GRUPO:   Vintage Aero Club — Museu Digital
 DATA:    2026-07-10 00:00
 AUTOR:   Pedro Nunes (com apoio de Claude)
 ------------------------------------------------------------
 HISTÓRICO DE VERSÕES
+1.6.0  2026-07-10 20:00 — Novo modal "Gerir Parceiros" (dentro da
+       Curadoria): criar, editar e apagar parceiros diretamente na
+       app, sem precisar de abrir a Sheet à mão.
+1.5.0  2026-07-10 19:00 — Campo Parceiro no registo deixou de
+       aceitar texto livre — passou a <select> alimentado pela
+       aba Parceiros da Sheet (ação "partners" do Code.gs 1.5.0),
+       mostrando só os parceiros com MostrarNoMuseu=Sim.
+1.4.1  2026-07-10 08:00 — Corrigido logótipo do parceiro no PDF
+       que não aparecia: jsPDF estava a assumir sempre JPEG, mas
+       o logo é PNG. Agora deteta o formato automaticamente.
 1.4.0  2026-07-10 00:00 — Logótipo do parceiro na ficha PDF,
        corrigido swipe-down-to-close a disparar pull-to-refresh
        nativo, swipe lateral para trocar Galeria/Registar/
@@ -57,7 +67,7 @@ dois ficheiros sobem juntas quando há mudanças de API entre eles.
   const VAC_LOGO = './logo-vac-color.png'; // ficheiro subido diretamente ao repo Vac-Museu
   const ANAC_LOGO = ''; // colocar URL do logo real da ANAC quando disponível
   const GOOGLE_CLIENT_ID = '363576677824-ivjutejofafic0hdu1bstqr3p9ir1m33.apps.googleusercontent.com';
-  const APP_VERSION = '1.4.0';
+  const APP_VERSION = '1.6.0';
   const APP_BUILD_DATE = '2026-07-10 00:00';
 </script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -269,6 +279,10 @@ dois ficheiros sobem juntas quando há mudanças de API entre eles.
   .mgmt-row .actions button{
     width:30px; height:30px; border-radius:6px; border:1px solid var(--line);
     background:var(--bg); font-size:13px; cursor:pointer;
+  }
+  .partner-hidden-badge{
+    font-family:'IBM Plex Mono',monospace; font-size:8px; padding:2px 6px;
+    border-radius:10px; background:rgba(0,0,0,0.08); opacity:.6;
   }
   .msg{font-size:12px; margin-top:8px; padding:8px 10px; border-radius:6px;}
   .msg.err{background:#fbe4e4; color:var(--red);}
@@ -492,8 +506,43 @@ dois ficheiros sobem juntas quando há mudanças de API entre eles.
   <div class="sheet" onclick="event.stopPropagation()">
     <button class="sheet-close" onclick="hide('managementOverlay')"></button>
     <h2>Curadoria</h2>
+    <button class="btn" style="margin-bottom:14px" onclick="openPartnersManagement()">🏷 Gerir Parceiros</button>
     <p style="font-size:12px; opacity:.6; margin-bottom:14px">Todas as peças, incluindo inativas. Toca numa linha para abrir a ficha completa.</p>
     <div id="managementList"></div>
+  </div>
+</div>
+
+<!-- GESTÃO DE PARCEIROS -->
+<div class="overlay" id="partnersOverlay" onclick="closeOverlay(event,'partnersOverlay')">
+  <div class="sheet" onclick="event.stopPropagation()">
+    <button class="sheet-close" onclick="hide('partnersOverlay')"></button>
+    <h2>Parceiros</h2>
+    <button class="btn accent" style="margin-bottom:14px" onclick="openPartnerForm()">+ Novo Parceiro</button>
+    <div id="partnersList"></div>
+  </div>
+</div>
+
+<!-- FORMULÁRIO DE PARCEIRO (novo / editar) -->
+<div class="overlay" id="partnerFormOverlay" onclick="closeOverlay(event,'partnerFormOverlay')">
+  <div class="sheet" onclick="event.stopPropagation()">
+    <button class="sheet-close" onclick="hide('partnerFormOverlay')"></button>
+    <h2 id="partnerFormTitle">Novo Parceiro</h2>
+    <div class="field"><label>Código (ex: VAC, ANAC)</label><input id="pf_codigo"></div>
+    <div class="field"><label>Nome</label><input id="pf_nome"></div>
+    <div class="field"><label>URL do logótipo</label><input id="pf_logoUrl" placeholder="https://..."></div>
+    <div class="row2">
+      <div class="field"><label>Cor principal</label><input id="pf_corPrincipal" placeholder="#1D3C53"></div>
+      <div class="field"><label>Cor secundária</label><input id="pf_corSecundaria" placeholder="#CC2027"></div>
+    </div>
+    <div class="field"><label>Domínio</label><input id="pf_dominio" placeholder="museu.anac.pt"></div>
+    <div class="field"><label>Contacto</label><input id="pf_contacto" placeholder="geral@..."></div>
+    <div class="field"><label>Informação institucional</label><textarea id="pf_infoInstitucional" rows="3"></textarea></div>
+    <div class="field">
+      <label>Mostrar no Museu</label>
+      <select id="pf_mostrarNoMuseu"><option value="Sim">Sim</option><option value="Não">Não</option></select>
+    </div>
+    <button class="btn accent" id="partnerSaveBtn" onclick="savePartner()">Guardar Parceiro</button>
+    <div id="partnerFormMsg"></div>
   </div>
 </div>
 
@@ -570,8 +619,7 @@ dois ficheiros sobem juntas quando há mudanças de API entre eles.
       </select>
     </div>
     <div class="field"><label>Parceiro / Grupo proprietário</label>
-      <input id="f_partner" list="partnerOptions" placeholder="VAC, ANAC, ou escreve um novo...">
-      <datalist id="partnerOptions"><option value="VAC"><option value="ANAC"></datalist>
+      <select id="f_partner"><option value="">A carregar parceiros...</option></select>
     </div>
     <div class="field"><label>Materiais</label><input id="f_materiais"></div>
     <div class="field"><label>Medidas</label><input id="f_medidas"></div>
@@ -636,6 +684,26 @@ function applyTheme(partnerCode) {
 /* ==============================================================
    CARREGAR DADOS
    ============================================================== */
+/* ==============================================================
+   PARCEIROS — lidos da aba Parceiros (só os com MostrarNoMuseu=Sim),
+   substitui o antigo texto livre no formulário de registo
+   ============================================================== */
+async function loadPartners() {
+  const select = document.getElementById('f_partner');
+  try {
+    const res = await fetch(`${API_URL}?action=partners`);
+    const data = await res.json();
+    if (!data.ok || !data.partners.length) throw new Error(data.error || 'Sem parceiros');
+
+    select.innerHTML = data.partners.map(p =>
+      `<option value="${p.Codigo}">${p.Nome ? p.Codigo + ' — ' + p.Nome : p.Codigo}</option>`
+    ).join('');
+  } catch (err) {
+    // Falha a ler a Sheet — fallback mínimo para não bloquear o registo
+    select.innerHTML = '<option value="VAC">VAC</option><option value="ANAC">ANAC</option>';
+  }
+}
+
 async function loadPieces() {
   const partnerParam = lockedPartner || 'ALL';
   try {
@@ -669,13 +737,6 @@ function renderPartnerTabs() {
       ${labels[p] || p}
     </div>
   `).join('');
-
-  // Atualiza as sugestões do campo "Parceiro" no formulário de registo
-  const dl = document.getElementById('partnerOptions');
-  if (dl) {
-    const known = new Set(['VAC', 'ANAC', ...allPieces.map(p => p.Partner).filter(Boolean)]);
-    dl.innerHTML = [...known].map(p => `<option value="${p}">`).join('');
-  }
 }
 
 function setPartnerFilter(p) {
@@ -783,6 +844,15 @@ async function urlToDataURL(url){
   }
 }
 
+// Deteta o formato real da imagem a partir do prefixo "data:image/xxx;base64,"
+// — evita o bug de dizer ao jsPDF que é JPEG quando na verdade é PNG (ou vice-versa)
+function detectImageFormat_(dataUrl){
+  const match = /^data:image\/(\w+);/.exec(dataUrl || '');
+  const type = (match ? match[1] : 'jpeg').toLowerCase();
+  if (type === 'jpg') return 'JPEG';
+  return type.toUpperCase(); // PNG, JPEG, WEBP...
+}
+
 async function openPrintOptions(){
   const p = currentDetailPiece;
   if (!p) return;
@@ -809,7 +879,7 @@ async function buildFichaPdf(p){
   if (theme.logo) {
     const logoData = await urlToDataURL(theme.logo);
     if (logoData) {
-      try { doc.addImage(logoData, 'JPEG', margin, y - 8, 16, 16); } catch (e) { /* formato não suportado, ignora */ }
+      try { doc.addImage(logoData, detectImageFormat_(logoData), margin, y - 8, 16, 16); } catch (e) { /* formato não suportado, ignora */ }
     }
   }
 
@@ -910,7 +980,7 @@ async function buildFichaPdf(p){
   if (theme.logo) {
     const smallLogoData = await urlToDataURL(theme.logo);
     if (smallLogoData) {
-      try { doc.addImage(smallLogoData, 'JPEG', labelX + 10, labelY + 4, 8, 8); } catch (e) {}
+      try { doc.addImage(smallLogoData, detectImageFormat_(smallLogoData), labelX + 10, labelY + 4, 8, 8); } catch (e) {}
     }
   }
 
@@ -1077,6 +1147,115 @@ function openManagement(){
   if (!session) { openLogin(); return; }
   renderManagementList();
   show('managementOverlay');
+}
+
+/* ==============================================================
+   GESTÃO DE PARCEIROS — CRUD completo (criar/editar/apagar)
+   ============================================================== */
+let cachedPartners = [];
+
+async function openPartnersManagement(){
+  const el = document.getElementById('partnersList');
+  el.innerHTML = '<div class="empty-state">A carregar...</div>';
+  show('partnersOverlay');
+  try {
+    const res = await fetch(`${API_URL}?action=partners&all=1`);
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error);
+    cachedPartners = data.partners;
+    renderPartnersList();
+  } catch (err) {
+    el.innerHTML = `<div class="empty-state">Erro a carregar parceiros: ${err.message}</div>`;
+  }
+}
+
+function renderPartnersList(){
+  const el = document.getElementById('partnersList');
+  if (!cachedPartners.length) {
+    el.innerHTML = '<div class="empty-state">Sem parceiros registados.</div>';
+    return;
+  }
+  el.innerHTML = cachedPartners.map(p => {
+    const hidden = String(p.MostrarNoMuseu || '').toLowerCase().trim() !== 'sim';
+    return `
+    <div class="mgmt-row">
+      <div class="info">
+        <div class="oid">${p.Codigo} ${hidden ? '<span class="partner-hidden-badge">ESCONDIDO</span>' : ''}</div>
+        <div class="nome">${p.Nome || ''}</div>
+      </div>
+      <div class="actions">
+        <button onclick='openPartnerForm(${JSON.stringify(p.Codigo)})' title="Editar">✏️</button>
+        <button onclick='deletePartnerUi(${JSON.stringify(p.Codigo)})' title="Apagar">🗑</button>
+      </div>
+    </div>
+  `;}).join('');
+}
+
+function openPartnerForm(codigo){
+  const existing = codigo ? cachedPartners.find(p => p.Codigo === codigo) : null;
+  document.getElementById('partnerFormTitle').textContent = existing ? `Editar ${existing.Codigo}` : 'Novo Parceiro';
+  document.getElementById('pf_codigo').value = existing ? existing.Codigo : '';
+  document.getElementById('pf_codigo').disabled = !!existing; // não deixa mudar o código depois de criado
+  document.getElementById('pf_nome').value = existing?.Nome || '';
+  document.getElementById('pf_logoUrl').value = existing?.LogoURL || '';
+  document.getElementById('pf_corPrincipal').value = existing?.CorPrincipal || '';
+  document.getElementById('pf_corSecundaria').value = existing?.CorSecundaria || '';
+  document.getElementById('pf_dominio').value = existing?.Dominio || '';
+  document.getElementById('pf_contacto').value = existing?.Contacto || '';
+  document.getElementById('pf_infoInstitucional').value = existing?.InfoInstitucional || '';
+  document.getElementById('pf_mostrarNoMuseu').value =
+    (existing && String(existing.MostrarNoMuseu || '').toLowerCase().trim() !== 'sim') ? 'Não' : 'Sim';
+  document.getElementById('partnerFormMsg').innerHTML = '';
+  show('partnerFormOverlay');
+}
+
+async function savePartner(){
+  const btn = document.getElementById('partnerSaveBtn');
+  const msgEl = document.getElementById('partnerFormMsg');
+  const isEditing = document.getElementById('pf_codigo').disabled;
+  const codigo = document.getElementById('pf_codigo').value.trim().toUpperCase();
+  if (!codigo) { msgEl.innerHTML = '<div class="msg err">Código é obrigatório</div>'; return; }
+
+  btn.disabled = true; btn.textContent = 'A guardar...';
+  const payload = {
+    action: isEditing ? 'updatePartner' : 'addPartner', ...session,
+    codigo,
+    nome: document.getElementById('pf_nome').value,
+    logoUrl: document.getElementById('pf_logoUrl').value,
+    corPrincipal: document.getElementById('pf_corPrincipal').value,
+    corSecundaria: document.getElementById('pf_corSecundaria').value,
+    dominio: document.getElementById('pf_dominio').value,
+    contacto: document.getElementById('pf_contacto').value,
+    infoInstitucional: document.getElementById('pf_infoInstitucional').value,
+    mostrarNoMuseu: document.getElementById('pf_mostrarNoMuseu').value === 'Sim'
+  };
+
+  try {
+    const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify(payload) });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error);
+    hide('partnerFormOverlay');
+    await openPartnersManagement(); // refresca a lista
+    loadPartners(); // refresca o <select> do registo também
+  } catch (err) {
+    msgEl.innerHTML = `<div class="msg err">${err.message}</div>`;
+  } finally {
+    btn.disabled = false; btn.textContent = 'Guardar Parceiro';
+  }
+}
+
+async function deletePartnerUi(codigo){
+  if (!confirm(`Apagar o parceiro "${codigo}"? Peças já registadas com este parceiro não são afetadas, mas deixa de aparecer nas opções de registo.`)) return;
+  try {
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'deletePartner', ...session, codigo })
+    });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error);
+    await openPartnersManagement();
+    loadPartners();
+  } catch (err) { alert('Erro: ' + err.message); }
 }
 
 function renderManagementList(){
@@ -1488,6 +1667,7 @@ function setupSwipeToClose(){
   setupSwipeToClose();
   setupSwipeTabs();
   showLoader('A sincronizar', 'A carregar o acervo...');
+  loadPartners();
   loadPieces().finally(() => { hideLoader(); checkDeepLinkPeca_(); });
 
   if ('serviceWorker' in navigator) {
