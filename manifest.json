@@ -2,6 +2,14 @@
   "name": "Museu VAC",
   "short_name": "Museu VAC",
   "description": "Acervo museológico do Vintage Aero Club",
+  "_versao": "1.1.0",
+  "_grupo": "Vintage Aero Club — Museu Digital",
+  "_data": "2026-07-10 08:30",
+  "_autor": "Pedro Nunes (com apoio de Claude)",
+  "_historico": [
+    "1.1.0 2026-07-10 08:30 — Removida entrada SVG dos icons (causava erro no processador de ícones do Chrome por ter @import de fonte externa)",
+    "1.0.0 2026-07-06 — Primeira versão: nome, cores, ícones PNG 192/512"
+  ],
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
@@ -19,12 +27,6 @@
       "src": "./icon-museu-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "./icon-museu.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
       "purpose": "any"
     }
   ]
