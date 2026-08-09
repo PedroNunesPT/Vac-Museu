@@ -3,12 +3,15 @@
 ============================================================
 MUSEU VAC — Frontend (PWA single-file)
 ============================================================
-VERSÃO:  1.6.0
+VERSÃO:  1.7.0
 GRUPO:   Vintage Aero Club — Museu Digital
-DATA:    2026-07-10 00:00
+DATA:    2026-08-09 10:30
 AUTOR:   Pedro Nunes (com apoio de Claude)
 ------------------------------------------------------------
 HISTÓRICO DE VERSÕES
+1.7.0  2026-08-09 10:30 — Novos campos por peça: Part Number
+       (P/N) e Serial Number (S/N), no registo, na ficha de
+       detalhe e na ficha PDF. Pedido de utilizador.
 1.6.0  2026-07-10 20:00 — Novo modal "Gerir Parceiros" (dentro da
        Curadoria): criar, editar e apagar parceiros diretamente na
        app, sem precisar de abrir a Sheet à mão.
@@ -67,8 +70,8 @@ dois ficheiros sobem juntas quando há mudanças de API entre eles.
   const VAC_LOGO = './logo-vac-color.png'; // ficheiro subido diretamente ao repo Vac-Museu
   const ANAC_LOGO = ''; // colocar URL do logo real da ANAC quando disponível
   const GOOGLE_CLIENT_ID = '363576677824-ivjutejofafic0hdu1bstqr3p9ir1m33.apps.googleusercontent.com';
-  const APP_VERSION = '1.6.0';
-  const APP_BUILD_DATE = '2026-07-10 00:00';
+  const APP_VERSION = '1.7.0';
+  const APP_BUILD_DATE = '2026-08-09 10:30';
 </script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -624,6 +627,10 @@ dois ficheiros sobem juntas quando há mudanças de API entre eles.
     <div class="field"><label>Materiais</label><input id="f_materiais"></div>
     <div class="field"><label>Medidas</label><input id="f_medidas"></div>
     <div class="field"><label>Marcas / n.º de série</label><input id="f_marcas"></div>
+    <div class="row2">
+      <div class="field"><label>Part Number (P/N)</label><input id="f_partNumber" placeholder="ex: 65-13456-1"></div>
+      <div class="field"><label>Serial Number (S/N)</label><input id="f_serialNumber" placeholder="ex: RM-4471"></div>
+    </div>
     <div class="field"><label>Descrição</label><textarea id="f_descricao" rows="3"></textarea></div>
     <div class="field">
       <label>História — o toque humano</label>
@@ -906,6 +913,7 @@ async function buildFichaPdf(p){
   const fields = [
     ['Parceiro', p.Partner], ['Categoria', p.Categoria], ['Materiais', p.Materiais],
     ['Medidas', p.Medidas], ['Marcas / N.º Série', p.Marcas],
+    ['Part Number', p.PartNumber], ['Serial Number', p.SerialNumber],
     ['Proveniência', p.Proveniencia], ['Estado', p.Estado],
     ['Data Registo', p.DataRegisto], ['Registado por', p.RegistadoPor]
   ];
@@ -1058,6 +1066,8 @@ function openDetail(p) {
     <div class="detail-row"><span class="k">Materiais</span><span>${p.Materiais || '—'}</span></div>
     <div class="detail-row"><span class="k">Medidas</span><span>${p.Medidas || '—'}</span></div>
     <div class="detail-row"><span class="k">Marcas</span><span>${p.Marcas || '—'}</span></div>
+    <div class="detail-row"><span class="k">Part Number</span><span>${p.PartNumber || '—'}</span></div>
+    <div class="detail-row"><span class="k">Serial Number</span><span>${p.SerialNumber || '—'}</span></div>
     <div class="detail-row"><span class="k">Proveniência</span><span>${p.Proveniencia || '—'}</span></div>
     <div class="detail-row"><span class="k">Estado</span><span>${p.Estado || '—'}</span></div>
     <p style="margin-top:14px; font-size:13px; line-height:1.5">${p.Descricao || ''}</p>
@@ -1540,6 +1550,8 @@ async function submitPiece() {
       materiais: document.getElementById('f_materiais').value,
       medidas: document.getElementById('f_medidas').value,
       marcas: document.getElementById('f_marcas').value,
+      partNumber: document.getElementById('f_partNumber').value,
+      serialNumber: document.getElementById('f_serialNumber').value,
       descricao: document.getElementById('f_descricao').value,
       historia: document.getElementById('f_historia').value,
       proveniencia: document.getElementById('f_proveniencia').value,
@@ -1554,7 +1566,7 @@ async function submitPiece() {
     msgEl.innerHTML = `<div class="msg ok">Peça registada: ${data.objectId}</div>`;
     uploadedPhotos = [];
     renderPhotoStrip();
-    ['f_nome','f_materiais','f_medidas','f_marcas','f_descricao','f_historia','f_proveniencia','f_estado']
+    ['f_nome','f_materiais','f_medidas','f_marcas','f_partNumber','f_serialNumber','f_descricao','f_historia','f_proveniencia','f_estado']
       .forEach(id => document.getElementById(id).value = '');
 
     loadPieces();
