@@ -3,12 +3,18 @@
 ============================================================
 MUSEU VAC — Frontend (PWA single-file)
 ============================================================
-VERSÃO:  1.7.0
+VERSÃO:  1.7.2
 GRUPO:   Vintage Aero Club — Museu Digital
-DATA:    2026-08-09 10:30
+DATA:    2026-08-10 12:00
 AUTOR:   Pedro Nunes (com apoio de Claude)
 ------------------------------------------------------------
 HISTÓRICO DE VERSÕES
+1.7.2  2026-08-10 12:00 — Link "Manual VAC.DIGITAL" passa a ser
+       dinâmico: busca o URL à aba INSTRUÇÕES do my.VAC em vez de
+       fixo no código (evita ter de reeditar sempre que o PDF do
+       manual é atualizado no Drive, o que muda o ID do ficheiro).
+1.7.1  2026-08-10 10:26 — Novo link "Manual VAC.DIGITAL" no menu
+       principal, a apontar para o PDF no Drive (pág. 13, Volume 4).
 1.7.0  2026-08-09 10:30 — Novos campos por peça: Part Number
        (P/N) e Serial Number (S/N), no registo, na ficha de
        detalhe e na ficha PDF. Pedido de utilizador.
@@ -70,8 +76,30 @@ dois ficheiros sobem juntas quando há mudanças de API entre eles.
   const VAC_LOGO = './logo-vac-color.png'; // ficheiro subido diretamente ao repo Vac-Museu
   const ANAC_LOGO = ''; // colocar URL do logo real da ANAC quando disponível
   const GOOGLE_CLIENT_ID = '363576677824-ivjutejofafic0hdu1bstqr3p9ir1m33.apps.googleusercontent.com';
-  const APP_VERSION = '1.7.0';
-  const APP_BUILD_DATE = '2026-08-09 10:30';
+  const APP_VERSION = '1.7.2';
+  const APP_BUILD_DATE = '2026-08-10 12:00';
+
+  // Backend do my.VAC — mesma URL usada no Code.gs (MYVAC_API_URL) para
+  // verificar membros. Reaproveitada aqui só para ler o link do Manual.
+  const MYVAC_API_URL_FE = 'https://script.google.com/macros/s/AKfycbyKlO728534WZGPpH-_W2oibzAyG7nIpWteRmHm4piiJlsRcplBqObXjjAFOl--CVP01A/exec';
+
+  // Link do Manual VAC.DIGITAL — vem da aba INSTRUÇÕES do my.VAC (chave
+  // "VAC.Digital Manual Link"), nunca fixo aqui. Cada vez que o PDF é
+  // atualizado no Drive, o Google gera um ID novo; assim só é preciso mudar
+  // a célula na Sheet do my.VAC, sem tocar em código em nenhuma das 3 apps.
+  // Se a chamada falhar (offline, etc.), mantém-se o link que já está no HTML.
+  async function atualizarLinkManualDigital() {
+    try {
+      const resp = await fetch(MYVAC_API_URL_FE + '?action=get_public_config');
+      const cfg = await resp.json();
+      const base = cfg['VAC.Digital Manual Link'];
+      if (base) {
+        const el = document.getElementById('link-manual-digital');
+        if (el) el.href = base.replace(/#.*$/, '') + '#page=13'; // pág. 13 = início do Volume 4 (Museu VAC)
+      }
+    } catch (e) { console.warn('Link do Manual VAC.DIGITAL: não foi possível atualizar (offline?)', e.message); }
+  }
+  window.addEventListener('load', atualizarLinkManualDigital);
 </script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -582,6 +610,10 @@ dois ficheiros sobem juntas quando há mudanças de API entre eles.
         <img class="menu-link-icon" src="./icon-pos192.png" alt="">
         <span><strong>VAC.Sales POS</strong><br><small>pos.vintageaeroclub.pt</small></span>
       </a>
+      <a id="link-manual-digital" href="https://drive.google.com/file/d/14z1gShssW2B-P6GrrpvkFXACVDt5ZXxc/view#page=13" target="_blank" class="menu-link">
+        <span class="menu-link-icon" style="display:flex;align-items:center;justify-content:center;font-size:1.1rem;">📖</span>
+        <span><strong>Manual VAC.DIGITAL</strong><br><small>Ajuda · abre no Volume 4 (Museu VAC)</small></span>
+      </a>
     </div>
     <button class="btn" id="menuLoginBtn" style="margin-top:18px" onclick="hide('menuOverlay'); openLogin()">Curadoria (login)</button>
     <button class="btn" id="menuLogoutBtn" style="margin-top:10px; display:none; background:transparent; color:var(--red); border:1px solid var(--red)" onclick="logout()">Terminar sessão</button>
@@ -626,7 +658,7 @@ dois ficheiros sobem juntas quando há mudanças de API entre eles.
     </div>
     <div class="field"><label>Materiais</label><input id="f_materiais"></div>
     <div class="field"><label>Medidas</label><input id="f_medidas"></div>
-    <div class="field"><label>Marcas</label><input id="f_marcas"></div>
+    <div class="field"><label>Marcas / n.º de série</label><input id="f_marcas"></div>
     <div class="row2">
       <div class="field"><label>Part Number (P/N)</label><input id="f_partNumber" placeholder="ex: 65-13456-1"></div>
       <div class="field"><label>Serial Number (S/N)</label><input id="f_serialNumber" placeholder="ex: RM-4471"></div>
