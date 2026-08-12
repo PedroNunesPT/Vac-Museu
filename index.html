@@ -3,12 +3,22 @@
 ============================================================
 MUSEU VAC — Frontend (PWA single-file)
 ============================================================
-VERSÃO:  1.7.2
+VERSÃO:  1.7.4
 GRUPO:   Vintage Aero Club — Museu Digital
-DATA:    2026-08-12 21:35
-AUTOR:   Pedro Nunes
+DATA:    2026-08-12
+AUTOR:   Pedro Nunes (com apoio de Claude)
 ------------------------------------------------------------
 HISTÓRICO DE VERSÕES
+1.7.4  2026-08-12 — Trocados os ícones 🚩⏸▶🗑✏️ da Curadoria e
+       Gestão de Parceiros por SVG inline. Em PCs com fonte de
+       emoji incompleta (comum em Windows mais antigo) estes
+       apareciam em branco/partidos, tornando botões sem texto
+       ilegíveis. SVG renderiza sempre igual, sem depender de
+       fonte do sistema.
+1.7.3  2026-08-12 — Adicionado fallback (onerror → emoji) aos 3
+       ícones do menu (Site, Área Crew, POS) que não tinham
+       nenhuma reserva — apareciam como ícone partido ao testar
+       localmente sem os ficheiros de imagem.
 1.7.2  2026-08-10 12:00 — Link "Manual VAC.DIGITAL" passa a ser
        dinâmico: busca o URL à aba INSTRUÇÕES do my.VAC em vez de
        fixo no código (evita ter de reeditar sempre que o PDF do
@@ -76,8 +86,8 @@ dois ficheiros sobem juntas quando há mudanças de API entre eles.
   const VAC_LOGO = './logo-vac-color.png'; // ficheiro subido diretamente ao repo Vac-Museu
   const ANAC_LOGO = ''; // colocar URL do logo real da ANAC quando disponível
   const GOOGLE_CLIENT_ID = '363576677824-ivjutejofafic0hdu1bstqr3p9ir1m33.apps.googleusercontent.com';
-  const APP_VERSION = '1.7.2';
-  const APP_BUILD_DATE = '2026-08-10 12:00';
+  const APP_VERSION = '1.7.4';
+  const APP_BUILD_DATE = '2026-08-12';
 
   // Backend do my.VAC — mesma URL usada no Code.gs (MYVAC_API_URL) para
   // verificar membros. Reaproveitada aqui só para ler o link do Manual.
@@ -310,6 +320,7 @@ dois ficheiros sobem juntas quando há mudanças de API entre eles.
   .mgmt-row .actions button{
     width:30px; height:30px; border-radius:6px; border:1px solid var(--line);
     background:var(--bg); font-size:13px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; color:var(--ink);
   }
   .partner-hidden-badge{
     font-family:'IBM Plex Mono',monospace; font-size:8px; padding:2px 6px;
@@ -599,15 +610,15 @@ dois ficheiros sobem juntas quando há mudanças de API entre eles.
     <div id="menuSessionBox"></div>
     <div class="menu-links">
       <a href="https://www.vintageaeroclub.pt" target="_blank" class="menu-link">
-        <img class="menu-link-icon" src="./logo-vac-color.png" alt="">
+        <img class="menu-link-icon" src="./logo-vac-color.png" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'menu-link-icon',style:'display:flex;align-items:center;justify-content:center;font-size:1.3rem;background:var(--panel);',textContent:'🌐'}))">
         <span><strong>Site</strong><br><small>www.vintageaeroclub.pt</small></span>
       </a>
       <a href="https://my.vintageaeroclub.pt" target="_blank" class="menu-link">
-        <img class="menu-link-icon" src="./icon-my192.png" alt="">
+        <img class="menu-link-icon" src="./icon-my192.png" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'menu-link-icon',style:'display:flex;align-items:center;justify-content:center;font-size:1.3rem;background:var(--panel);',textContent:'✈️'}))">
         <span><strong>Área Crew</strong><br><small>my.vintageaeroclub.pt</small></span>
       </a>
       <a href="https://pos.vintageaeroclub.pt" target="_blank" class="menu-link">
-        <img class="menu-link-icon" src="./icon-pos192.png" alt="">
+        <img class="menu-link-icon" src="./icon-pos192.png" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'menu-link-icon',style:'display:flex;align-items:center;justify-content:center;font-size:1.3rem;background:var(--panel);',textContent:'🛒'}))">
         <span><strong>VAC.Sales POS</strong><br><small>pos.vintageaeroclub.pt</small></span>
       </a>
       <a id="link-manual-digital" href="https://drive.google.com/file/d/14z1gShssW2B-P6GrrpvkFXACVDt5ZXxc/view#page=13" target="_blank" class="menu-link">
@@ -1116,9 +1127,9 @@ function openDetail(p) {
     <div style="margin-top:18px; padding-top:14px; border-top:1px dashed var(--line)">
       <div class="section-lbl" style="padding:0 0 8px">Curadoria (só visível para membros)</div>
       <div style="display:flex; gap:8px; flex-wrap:wrap">
-        <button class="btn" style="flex:1; min-width:100px" onclick="flagPieceUi()">🚩 Sinalizar</button>
-        <button class="btn" style="flex:1; min-width:100px" onclick="togglePieceStatusUi()">${isInactive ? '▶ Reativar' : '⏸ Inativar'}</button>
-        <button class="btn accent" style="flex:1; min-width:100px" onclick="deletePieceUi()">🗑 Apagar</button>
+        <button class="btn" style="flex:1; min-width:100px; display:flex; align-items:center; justify-content:center; gap:6px;" onclick="flagPieceUi()">${svgFlag_()} Sinalizar</button>
+        <button class="btn" style="flex:1; min-width:100px; display:flex; align-items:center; justify-content:center; gap:6px;" onclick="togglePieceStatusUi()">${isInactive ? svgPlay_() + ' Reativar' : svgPause_() + ' Inativar'}</button>
+        <button class="btn accent" style="flex:1; min-width:100px; display:flex; align-items:center; justify-content:center; gap:6px;" onclick="deletePieceUi()">${svgTrash_()} Apagar</button>
       </div>
     </div>` : ''}
   `;
@@ -1211,6 +1222,25 @@ async function openPartnersManagement(){
   }
 }
 
+// Ícones SVG inline para os botões de ação compactos (Curadoria/Parceiros).
+// Emoji sozinhos (sem texto ao lado) ficam ilegíveis em PCs com fonte de
+// emoji incompleta (ex: Windows mais antigo) — SVG renderiza sempre igual.
+function svgFlag_() {
+  return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>';
+}
+function svgPause_() {
+  return '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>';
+}
+function svgPlay_() {
+  return '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="6,3 20,12 6,21"/></svg>';
+}
+function svgTrash_() {
+  return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>';
+}
+function svgEdit_() {
+  return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>';
+}
+
 function renderPartnersList(){
   const el = document.getElementById('partnersList');
   if (!cachedPartners.length) {
@@ -1226,8 +1256,8 @@ function renderPartnersList(){
         <div class="nome">${p.Nome || ''}</div>
       </div>
       <div class="actions">
-        <button onclick='openPartnerForm(${JSON.stringify(p.Codigo)})' title="Editar">✏️</button>
-        <button onclick='deletePartnerUi(${JSON.stringify(p.Codigo)})' title="Apagar">🗑</button>
+        <button onclick='openPartnerForm(${JSON.stringify(p.Codigo)})' title="Editar">${svgEdit_()}</button>
+        <button onclick='deletePartnerUi(${JSON.stringify(p.Codigo)})' title="Apagar">${svgTrash_()}</button>
       </div>
     </div>
   `;}).join('');
@@ -1317,9 +1347,9 @@ function renderManagementList(){
         <div class="nome">${p.Nome || 'Sem nome'}</div>
       </div>
       <div class="actions">
-        <button onclick='flagPieceUi(${JSON.stringify(p).replace(/'/g,"&apos;")})' title="Sinalizar">🚩</button>
-        <button onclick='togglePieceStatusUi(${JSON.stringify(p).replace(/'/g,"&apos;")})' title="${isInactive ? 'Reativar' : 'Inativar'}">${isInactive ? '▶' : '⏸'}</button>
-        <button onclick='deletePieceUi(${JSON.stringify(p).replace(/'/g,"&apos;")})' title="Apagar">🗑</button>
+        <button onclick='flagPieceUi(${JSON.stringify(p).replace(/'/g,"&apos;")})' title="Sinalizar">${svgFlag_()}</button>
+        <button onclick='togglePieceStatusUi(${JSON.stringify(p).replace(/'/g,"&apos;")})' title="${isInactive ? 'Reativar' : 'Inativar'}">${isInactive ? svgPlay_() : svgPause_()}</button>
+        <button onclick='deletePieceUi(${JSON.stringify(p).replace(/'/g,"&apos;")})' title="Apagar">${svgTrash_()}</button>
       </div>
     </div>
   `;}).join('');
