@@ -3,12 +3,17 @@
 ============================================================
 MUSEU VAC — Frontend (PWA single-file)
 ============================================================
-VERSÃO:  1.8.1
+VERSÃO:  1.8.2
 GRUPO:   Vintage Aero Club — Museu Digital
 DATA:    2026-08-17 15:00
 AUTOR:   Pedro Nunes (com apoio de Claude)
 ------------------------------------------------------------
 HISTÓRICO DE VERSÕES
+1.8.2  2026-08-17 19:00 — Registo de peça mais resistente a
+       redes móveis instáveis: novo fetchJson_ trata respostas
+       HTML de erro ("Unexpected token <") com mensagem clara e
+       1 nova tentativa automática, e sessão expirada durante o
+       registo já limpa e sugere novo login em vez de só falhar.
 1.8.1  2026-08-17 16:00 — Reposto o botão "Registar peça"
        também no topo do formulário (tinha-se perdido nalguma
        versão intermédia) — corrige o botão a "sair" no telemóvel.
@@ -94,8 +99,8 @@ dois ficheiros sobem juntas quando há mudanças de API entre eles.
   const VAC_LOGO = './logo-vac-color.png'; // ficheiro subido diretamente ao repo Vac-Museu
   const ANAC_LOGO = ''; // colocar URL do logo real da ANAC quando disponível
   const GOOGLE_CLIENT_ID = '363576677824-ivjutejofafic0hdu1bstqr3p9ir1m33.apps.googleusercontent.com';
-  const APP_VERSION = '1.8.1';
-  const APP_BUILD_DATE = '2026-08-17 16:00';
+  const APP_VERSION = '1.8.2';
+  const APP_BUILD_DATE = '2026-08-17 19:00';
 
   // Backend do my.VAC — mesma URL usada no Code.gs (MYVAC_API_URL) para
   // verificar membros. Reaproveitada aqui só para ler o link do Manual.
@@ -1619,6 +1624,38 @@ function removePhoto(i){
 /* ==============================================================
    SUBMETER PEÇA (upload imagem -> registar linha na Sheet)
    ============================================================== */
+// Fetch robusto para chamadas à API: trata respostas que não são JSON
+// (páginas de erro HTML da Google, típico em redes móveis instáveis),
+// tem timeout, e tenta 1 vez mais antes de desistir.
+async function fetchJson_(url, options, attempt) {
+  attempt = attempt || 1;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 25000);
+  try {
+    const res = await fetch(url, { ...options, signal: controller.signal });
+    clearTimeout(timeoutId);
+    const text = await res.text();
+    try {
+      return JSON.parse(text);
+    } catch (parseErr) {
+      throw new Error(
+        text.trim().startsWith('<')
+          ? 'O servidor devolveu uma página de erro em vez de dados — provavelmente a ligação falhou a meio. Tenta outra vez.'
+          : 'Resposta inesperada do servidor.'
+      );
+    }
+  } catch (err) {
+    clearTimeout(timeoutId);
+    const isNetworkIssue = err.name === 'AbortError' || err.message === 'Failed to fetch' || err instanceof TypeError;
+    if (isNetworkIssue && attempt < 2) {
+      await new Promise(r => setTimeout(r, 1200));
+      return fetchJson_(url, options, attempt + 1);
+    }
+    if (err.name === 'AbortError') throw new Error('O pedido demorou demasiado tempo (rede lenta) — tenta outra vez.');
+    throw err;
+  }
+}
+
 async function submitPiece() {
   const btn = document.getElementById('submitBtn');
   const btnTop = document.getElementById('submitBtnTop');
@@ -1633,11 +1670,10 @@ async function submitPiece() {
     let objectId = editingPieceObjectId;
     if (!isEditing) {
       showLoader('A registar peça', 'A reservar ObjectID...');
-      const reserveRes = await fetch(API_URL, {
+      const reserveData = await fetchJson_(API_URL, {
         method: 'POST',
         body: JSON.stringify({ action: 'reserveObjectId', ...session, partner })
       });
-      const reserveData = await reserveRes.json();
       if (!reserveData.ok) throw new Error(reserveData.error);
       objectId = reserveData.objectId;
     }
@@ -1645,14 +1681,13 @@ async function submitPiece() {
     const urls = [];
     for (let i = 0; i < uploadedPhotos.length; i++) {
       showLoader('A processar foto', `Imagem ${i + 1} de ${uploadedPhotos.length}...`);
-      const upRes = await fetch(API_URL, {
+      const upData = await fetchJson_(API_URL, {
         method: 'POST',
         body: JSON.stringify({
           action: 'uploadImage', ...session, objectId,
           base64: uploadedPhotos[i].base64, filename: `foto_${i + 1}.jpg`
         })
       });
-      const upData = await upRes.json();
       if (!upData.ok) throw new Error(upData.error);
       urls.push(upData.url);
     }
@@ -1677,8 +1712,7 @@ async function submitPiece() {
     };
     if (!isEditing || allUrls) payload.imagemUrl = allUrls;
 
-    const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify(payload) });
-    const data = await res.json();
+    const data = await fetchJson_(API_URL, { method: 'POST', body: JSON.stringify(payload) });
     if (!data.ok) throw new Error(data.error);
 
     msgEl.innerHTML = `<div class="msg ok">${isEditing ? 'Ficha atualizada: ' + objectId : 'Peça registada: ' + data.objectId}</div>`;
@@ -1693,7 +1727,14 @@ async function submitPiece() {
 
     loadPieces();
   } catch (err) {
-    msgEl.innerHTML = `<div class="msg err">${err.message}</div>`;
+    if (/sessão inválida/i.test(err.message)) {
+      session = null;
+      localStorage.removeItem('vac_museu_session');
+      renderHeaderAvatar();
+      msgEl.innerHTML = `<div class="msg err">A tua sessão expirou. <a href="#" onclick="event.preventDefault(); openLogin();">Toca aqui para entrar outra vez</a> e volta a tentar.</div>`;
+    } else {
+      msgEl.innerHTML = `<div class="msg err">${err.message}</div>`;
+    }
   } finally {
     hideLoader();
     btn.disabled = false;
