@@ -3,12 +3,20 @@
 ============================================================
 MUSEU VAC — Frontend (PWA single-file)
 ============================================================
-VERSÃO:  1.7.4
+VERSÃO:  1.8.1
 GRUPO:   Vintage Aero Club — Museu Digital
-DATA:    2026-08-12
+DATA:    2026-08-17 15:00
 AUTOR:   Pedro Nunes (com apoio de Claude)
 ------------------------------------------------------------
 HISTÓRICO DE VERSÕES
+1.8.1  2026-08-17 16:00 — Reposto o botão "Registar peça"
+       também no topo do formulário (tinha-se perdido nalguma
+       versão intermédia) — corrige o botão a "sair" no telemóvel.
+1.8.0  2026-08-17 15:00 — Nova função "Editar ficha": botão na
+       Curadoria que abre o formulário de registo pré-preenchido
+       com os dados da peça. Fotos já existentes são preservadas
+       (fotos novas juntam-se, não substituem). Alinhado com
+       Code.gs 1.8.0 (ação updatePiece).
 1.7.4  2026-08-12 — Trocados os ícones 🚩⏸▶🗑✏️ da Curadoria e
        Gestão de Parceiros por SVG inline. Em PCs com fonte de
        emoji incompleta (comum em Windows mais antigo) estes
@@ -86,8 +94,8 @@ dois ficheiros sobem juntas quando há mudanças de API entre eles.
   const VAC_LOGO = './logo-vac-color.png'; // ficheiro subido diretamente ao repo Vac-Museu
   const ANAC_LOGO = ''; // colocar URL do logo real da ANAC quando disponível
   const GOOGLE_CLIENT_ID = '363576677824-ivjutejofafic0hdu1bstqr3p9ir1m33.apps.googleusercontent.com';
-  const APP_VERSION = '1.7.4';
-  const APP_BUILD_DATE = '2026-08-12';
+  const APP_VERSION = '1.8.1';
+  const APP_BUILD_DATE = '2026-08-17 16:00';
 
   // Backend do my.VAC — mesma URL usada no Code.gs (MYVAC_API_URL) para
   // verificar membros. Reaproveitada aqui só para ler o link do Manual.
@@ -646,8 +654,9 @@ dois ficheiros sobem juntas quando há mudanças de API entre eles.
 <!-- REGISTAR PEÇA -->
 <div class="overlay" id="formOverlay" onclick="closeOverlay(event,'formOverlay')">
   <div class="sheet" onclick="event.stopPropagation()">
-    <button class="sheet-close" onclick="hide('formOverlay')"></button>
-    <h2>Registar peça</h2>
+    <button class="sheet-close" onclick="hide('formOverlay'); exitEditMode_();"></button>
+    <h2 id="formTitle">Registar peça</h2>
+    <button class="btn accent submit-btn-top" id="submitBtnTop" onclick="submitPiece()" style="margin-bottom:14px">Registar peça ⬆</button>
 
     <div style="display:flex; gap:10px; margin-bottom:10px">
       <button type="button" class="btn" style="flex:1" onclick="document.getElementById('cameraInput').click()">📷 Tirar foto</button>
@@ -697,6 +706,8 @@ let currentPartnerFilter = 'ALL';   // ALL | VAC | ANAC ...
 let currentCategoryFilter = 'Todas';
 let lockedPartner = null;           // definido se o hostname for de um parceiro
 let uploadedPhotos = [];
+let editingPieceObjectId = null; // null = a registar nova peça; senão = a editar esta peça
+let editingPieceExistingPhotos = ''; // fotos já existentes (URLs "|"), preservadas ao editar
 
 /* ==============================================================
    DETEÇÃO DE PARCEIRO POR HOSTNAME
@@ -1128,6 +1139,7 @@ function openDetail(p) {
       <div class="section-lbl" style="padding:0 0 8px">Curadoria (só visível para membros)</div>
       <div style="display:flex; gap:8px; flex-wrap:wrap">
         <button class="btn" style="flex:1; min-width:100px; display:flex; align-items:center; justify-content:center; gap:6px;" onclick="flagPieceUi()">${svgFlag_()} Sinalizar</button>
+        <button class="btn" style="flex:1; min-width:100px; display:flex; align-items:center; justify-content:center; gap:6px;" onclick="editPieceUi()">${svgEdit_()} Editar</button>
         <button class="btn" style="flex:1; min-width:100px; display:flex; align-items:center; justify-content:center; gap:6px;" onclick="togglePieceStatusUi()">${isInactive ? svgPlay_() + ' Reativar' : svgPause_() + ' Inativar'}</button>
         <button class="btn accent" style="flex:1; min-width:100px; display:flex; align-items:center; justify-content:center; gap:6px;" onclick="deletePieceUi()">${svgTrash_()} Apagar</button>
       </div>
@@ -1139,6 +1151,42 @@ function openDetail(p) {
 /* ==============================================================
    AÇÕES DE GESTÃO — sinalizar, inativar/reativar, apagar
    ============================================================== */
+function editPieceUi(){
+  const p = currentDetailPiece;
+  if (!p) return;
+
+  editingPieceObjectId = p.ObjectID;
+  editingPieceExistingPhotos = p.ImagemURL || '';
+  uploadedPhotos = [];
+
+  document.getElementById('formTitle').textContent = `Editar ${p.ObjectID}`;
+  document.getElementById('submitBtn').textContent = 'Guardar Alterações';
+  document.getElementById('submitBtnTop').textContent = 'Guardar Alterações ⬆';
+  document.getElementById('f_nome').value = p.Nome || '';
+  document.getElementById('f_categoria').value = p.Categoria || '';
+  document.getElementById('f_partner').value = p.Partner || '';
+  document.getElementById('f_materiais').value = p.Materiais || '';
+  document.getElementById('f_medidas').value = p.Medidas || '';
+  document.getElementById('f_marcas').value = p.Marcas || '';
+  document.getElementById('f_partNumber').value = p.PartNumber || '';
+  document.getElementById('f_serialNumber').value = p.SerialNumber || '';
+  document.getElementById('f_descricao').value = p.Descricao || '';
+  document.getElementById('f_historia').value = p.Historia || '';
+  document.getElementById('f_proveniencia').value = p.Proveniencia || '';
+  document.getElementById('f_estado').value = p.Estado || '';
+
+  // Mostra as fotos já existentes na tira, só para ver (não são reenviadas —
+  // ficam preservadas automaticamente; a tira normal é só para fotos NOVAS)
+  const existingCount = (p.ImagemURL || '').split('|').filter(Boolean).length;
+  document.getElementById('formMsg').innerHTML = existingCount
+    ? `<div class="msg ok">${existingCount} foto(s) já guardada(s) — as que adicionares agora juntam-se a essas.</div>`
+    : '';
+  renderPhotoStrip();
+
+  hide('detailOverlay');
+  show('formOverlay');
+}
+
 async function flagPieceUi(piece){
   const p = piece || currentDetailPiece;
   const nota = prompt('Nota de sinalização (motivo da atenção):', p.Sinalizado || '');
@@ -1370,6 +1418,7 @@ function setTab(tab) {
   });
   if (tab === 'admin') {
     if (!session) { openLogin(); return; }
+    exitEditMode_();
     show('formOverlay');
   } else if (tab === 'gestao') {
     openManagement();
@@ -1572,21 +1621,26 @@ function removePhoto(i){
    ============================================================== */
 async function submitPiece() {
   const btn = document.getElementById('submitBtn');
+  const btnTop = document.getElementById('submitBtnTop');
+  const allBtns = [btn, btnTop];
   const msgEl = document.getElementById('formMsg');
   msgEl.innerHTML = '';
-  btn.disabled = true;
-  btn.textContent = 'A guardar...';
+  allBtns.forEach(b => { b.disabled = true; b.textContent = 'A guardar...'; });
   const partner = document.getElementById('f_partner').value;
+  const isEditing = !!editingPieceObjectId;
 
   try {
-    showLoader('A registar peça', 'A reservar ObjectID...');
-    const reserveRes = await fetch(API_URL, {
-      method: 'POST',
-      body: JSON.stringify({ action: 'reserveObjectId', ...session, partner })
-    });
-    const reserveData = await reserveRes.json();
-    if (!reserveData.ok) throw new Error(reserveData.error);
-    const objectId = reserveData.objectId;
+    let objectId = editingPieceObjectId;
+    if (!isEditing) {
+      showLoader('A registar peça', 'A reservar ObjectID...');
+      const reserveRes = await fetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'reserveObjectId', ...session, partner })
+      });
+      const reserveData = await reserveRes.json();
+      if (!reserveData.ok) throw new Error(reserveData.error);
+      objectId = reserveData.objectId;
+    }
 
     const urls = [];
     for (let i = 0; i < uploadedPhotos.length; i++) {
@@ -1602,11 +1656,13 @@ async function submitPiece() {
       if (!upData.ok) throw new Error(upData.error);
       urls.push(upData.url);
     }
-    const imagemUrl = urls.join('|'); // várias fotos guardadas na mesma célula, separadas por "|"
+    // Ao editar, as fotos novas juntam-se às já existentes (não as substitui);
+    // se não houver fotos novas nem antigas, não manda o campo (não apaga nada por engano)
+    const allUrls = [editingPieceExistingPhotos, urls.join('|')].filter(Boolean).join('|');
 
-    showLoader('A registar peça', 'Google Sheets');
+    showLoader(isEditing ? 'A guardar alterações' : 'A registar peça', 'Google Sheets');
     const payload = {
-      action: 'addPiece', ...session, objectId, partner,
+      action: isEditing ? 'updatePiece' : 'addPiece', ...session, objectId, partner,
       nome: document.getElementById('f_nome').value,
       categoria: document.getElementById('f_categoria').value,
       materiais: document.getElementById('f_materiais').value,
@@ -1618,18 +1674,22 @@ async function submitPiece() {
       historia: document.getElementById('f_historia').value,
       proveniencia: document.getElementById('f_proveniencia').value,
       estado: document.getElementById('f_estado').value,
-      imagemUrl
     };
+    if (!isEditing || allUrls) payload.imagemUrl = allUrls;
 
     const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify(payload) });
     const data = await res.json();
     if (!data.ok) throw new Error(data.error);
 
-    msgEl.innerHTML = `<div class="msg ok">Peça registada: ${data.objectId}</div>`;
+    msgEl.innerHTML = `<div class="msg ok">${isEditing ? 'Ficha atualizada: ' + objectId : 'Peça registada: ' + data.objectId}</div>`;
     uploadedPhotos = [];
     renderPhotoStrip();
-    ['f_nome','f_materiais','f_medidas','f_marcas','f_partNumber','f_serialNumber','f_descricao','f_historia','f_proveniencia','f_estado']
-      .forEach(id => document.getElementById(id).value = '');
+    if (!isEditing) {
+      ['f_nome','f_materiais','f_medidas','f_marcas','f_partNumber','f_serialNumber','f_descricao','f_historia','f_proveniencia','f_estado']
+        .forEach(id => document.getElementById(id).value = '');
+    } else {
+      setTimeout(() => { hide('formOverlay'); exitEditMode_(); }, 900);
+    }
 
     loadPieces();
   } catch (err) {
@@ -1637,8 +1697,22 @@ async function submitPiece() {
   } finally {
     hideLoader();
     btn.disabled = false;
-    btn.textContent = 'Registar peça';
+    btnTop.disabled = false;
+    btn.textContent = isEditing ? 'Guardar Alterações' : 'Registar peça';
+    btnTop.textContent = isEditing ? 'Guardar Alterações ⬆' : 'Registar peça ⬆';
   }
+}
+
+function exitEditMode_(){
+  editingPieceObjectId = null;
+  editingPieceExistingPhotos = '';
+  document.getElementById('formTitle').textContent = 'Registar peça';
+  document.getElementById('submitBtn').textContent = 'Registar peça';
+  document.getElementById('submitBtnTop').textContent = 'Registar peça ⬆';
+  ['f_nome','f_materiais','f_medidas','f_marcas','f_partNumber','f_serialNumber','f_descricao','f_historia','f_proveniencia','f_estado']
+    .forEach(id => document.getElementById(id).value = '');
+  uploadedPhotos = [];
+  renderPhotoStrip();
 }
 
         // ===== Loader Tiger Moth =====
