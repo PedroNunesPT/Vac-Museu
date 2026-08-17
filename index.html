@@ -3,12 +3,29 @@
 ============================================================
 MUSEU VAC — Frontend (PWA single-file)
 ============================================================
-VERSÃO:  1.8.2
+VERSÃO:  1.9.1
 GRUPO:   Vintage Aero Club — Museu Digital
 DATA:    2026-08-17 15:00
 AUTOR:   Pedro Nunes (com apoio de Claude)
 ------------------------------------------------------------
 HISTÓRICO DE VERSÕES
+1.9.1  2026-08-17 22:00 — Adicionado botão X bem visível (canto
+       superior direito) em todos os modais, além da barrinha
+       fina que já lá estava (36x4px — alvo de toque/clique
+       demasiado pequeno, praticamente impossível de acertar,
+       sobretudo no PC). Clicar fora do modal continua a funcionar
+       como antes.
+1.9.0  2026-08-17 21:00 — Novo campo Localização (onde a peça
+       está fisicamente guardada, ex: "Alpriate, setor 4,
+       prateleira 20") no registo, edição, ficha (só membros) e
+       PDF. Label "Marcas / N.º Série" simplificado para "Marcas"
+       (o Serial Number já tem coluna própria). Botão "Imprimir
+       ficha + etiqueta" passou a aparecer logo após registar ou
+       editar uma peça, sem precisar de voltar à galeria.
+1.8.3  2026-08-17 20:00 — Botão "Imprimir ficha + etiqueta"
+       estava visível para visitantes anónimos (sem login) —
+       passou a exigir sessão, tal como as restantes ações de
+       Curadoria.
 1.8.2  2026-08-17 19:00 — Registo de peça mais resistente a
        redes móveis instáveis: novo fetchJson_ trata respostas
        HTML de erro ("Unexpected token <") com mensagem clara e
@@ -99,8 +116,8 @@ dois ficheiros sobem juntas quando há mudanças de API entre eles.
   const VAC_LOGO = './logo-vac-color.png'; // ficheiro subido diretamente ao repo Vac-Museu
   const ANAC_LOGO = ''; // colocar URL do logo real da ANAC quando disponível
   const GOOGLE_CLIENT_ID = '363576677824-ivjutejofafic0hdu1bstqr3p9ir1m33.apps.googleusercontent.com';
-  const APP_VERSION = '1.8.2';
-  const APP_BUILD_DATE = '2026-08-17 19:00';
+  const APP_VERSION = '1.9.1';
+  const APP_BUILD_DATE = '2026-08-17 22:00';
 
   // Backend do my.VAC — mesma URL usada no Code.gs (MYVAC_API_URL) para
   // verificar membros. Reaproveitada aqui só para ler o link do Manual.
@@ -280,13 +297,20 @@ dois ficheiros sobem juntas quando há mudanças de API entre eles.
   .overlay.show{display:flex;}
   .sheet{
     background:var(--bg); width:100%; max-width:520px; max-height:88vh; overflow-y:auto;
-    border-radius:20px 20px 0 0; padding:22px 20px 32px;
+    border-radius:20px 20px 0 0; padding:22px 20px 32px; position:relative;
     transition:transform .25s ease; touch-action:pan-y;
   }
   .sheet-close{
     display:block; margin:0 auto 14px; width:36px; height:4px; border-radius:4px;
     background:var(--line); border:none;
   }
+  .sheet-x{
+    position:absolute; top:14px; right:14px; width:34px; height:34px; border-radius:50%;
+    background:rgba(0,0,0,0.06); border:none; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Inter',sans-serif; font-size:18px; line-height:1; color:var(--ink); opacity:.7;
+  }
+  .sheet-x:hover{ background:rgba(0,0,0,0.12); opacity:1; }
   .sheet h2{font-family:'Cormorant Garamond',serif; font-size:24px; margin-bottom:14px;}
   .field{margin-bottom:14px;}
   .field label{
@@ -551,6 +575,7 @@ dois ficheiros sobem juntas quando há mudanças de API entre eles.
 <!-- DETALHE DA PEÇA -->
 <div class="overlay" id="detailOverlay" onclick="closeOverlay(event,'detailOverlay')">
   <div class="sheet" onclick="event.stopPropagation()">
+    <button class="sheet-x" onclick="hide('detailOverlay')" aria-label="Fechar">✕</button>
     <button class="sheet-close" onclick="hide('detailOverlay')"></button>
     <div id="detailBody"></div>
   </div>
@@ -559,6 +584,7 @@ dois ficheiros sobem juntas quando há mudanças de API entre eles.
 <!-- LISTA DE GESTÃO -->
 <div class="overlay" id="managementOverlay" onclick="closeOverlay(event,'managementOverlay')">
   <div class="sheet" onclick="event.stopPropagation()">
+    <button class="sheet-x" onclick="hide('managementOverlay')" aria-label="Fechar">✕</button>
     <button class="sheet-close" onclick="hide('managementOverlay')"></button>
     <h2>Curadoria</h2>
     <button class="btn" style="margin-bottom:14px" onclick="openPartnersManagement()">🏷 Gerir Parceiros</button>
@@ -570,6 +596,7 @@ dois ficheiros sobem juntas quando há mudanças de API entre eles.
 <!-- GESTÃO DE PARCEIROS -->
 <div class="overlay" id="partnersOverlay" onclick="closeOverlay(event,'partnersOverlay')">
   <div class="sheet" onclick="event.stopPropagation()">
+    <button class="sheet-x" onclick="hide('partnersOverlay')" aria-label="Fechar">✕</button>
     <button class="sheet-close" onclick="hide('partnersOverlay')"></button>
     <h2>Parceiros</h2>
     <button class="btn accent" style="margin-bottom:14px" onclick="openPartnerForm()">+ Novo Parceiro</button>
@@ -580,6 +607,7 @@ dois ficheiros sobem juntas quando há mudanças de API entre eles.
 <!-- FORMULÁRIO DE PARCEIRO (novo / editar) -->
 <div class="overlay" id="partnerFormOverlay" onclick="closeOverlay(event,'partnerFormOverlay')">
   <div class="sheet" onclick="event.stopPropagation()">
+    <button class="sheet-x" onclick="hide('partnerFormOverlay')" aria-label="Fechar">✕</button>
     <button class="sheet-close" onclick="hide('partnerFormOverlay')"></button>
     <h2 id="partnerFormTitle">Novo Parceiro</h2>
     <div class="field"><label>Código (ex: VAC, ANAC)</label><input id="pf_codigo"></div>
@@ -604,6 +632,7 @@ dois ficheiros sobem juntas quando há mudanças de API entre eles.
 <!-- OPÇÕES DE PDF -->
 <div class="overlay" id="printOptionsOverlay" onclick="closeOverlay(event,'printOptionsOverlay')">
   <div class="sheet" onclick="event.stopPropagation()">
+    <button class="sheet-x" onclick="hide('printOptionsOverlay')" aria-label="Fechar">✕</button>
     <button class="sheet-close" onclick="hide('printOptionsOverlay')"></button>
     <h2>Ficha + Etiqueta</h2>
     <p style="font-size:13px; opacity:.7; margin-bottom:16px">A gerar PDF...</p>
@@ -618,6 +647,7 @@ dois ficheiros sobem juntas quando há mudanças de API entre eles.
 <!-- MENU LATERAL (drawer hamburguer) -->
 <div class="overlay" id="menuOverlay" onclick="closeOverlay(event,'menuOverlay')">
   <div class="sheet" onclick="event.stopPropagation()">
+    <button class="sheet-x" onclick="hide('menuOverlay')" aria-label="Fechar">✕</button>
     <button class="sheet-close" onclick="hide('menuOverlay')"></button>
     <h2>Vintage Aero Club</h2>
     <div id="menuSessionBox"></div>
@@ -648,6 +678,7 @@ dois ficheiros sobem juntas quando há mudanças de API entre eles.
 <!-- LOGIN -->
 <div class="overlay" id="loginOverlay" onclick="closeOverlay(event,'loginOverlay')">
   <div class="sheet" onclick="event.stopPropagation()">
+    <button class="sheet-x" onclick="hide('loginOverlay')" aria-label="Fechar">✕</button>
     <button class="sheet-close" onclick="hide('loginOverlay')"></button>
     <h2>Acesso de gestão</h2>
     <p style="font-size:13px; opacity:.7; margin-bottom:16px">Qualquer membro VAC pode entrar e registar peças no acervo.</p>
@@ -659,6 +690,7 @@ dois ficheiros sobem juntas quando há mudanças de API entre eles.
 <!-- REGISTAR PEÇA -->
 <div class="overlay" id="formOverlay" onclick="closeOverlay(event,'formOverlay')">
   <div class="sheet" onclick="event.stopPropagation()">
+    <button class="sheet-x" onclick="hide('formOverlay'); exitEditMode_();" aria-label="Fechar">✕</button>
     <button class="sheet-close" onclick="hide('formOverlay'); exitEditMode_();"></button>
     <h2 id="formTitle">Registar peça</h2>
     <button class="btn accent submit-btn-top" id="submitBtnTop" onclick="submitPiece()" style="margin-bottom:14px">Registar peça ⬆</button>
@@ -683,11 +715,12 @@ dois ficheiros sobem juntas quando há mudanças de API entre eles.
     </div>
     <div class="field"><label>Materiais</label><input id="f_materiais"></div>
     <div class="field"><label>Medidas</label><input id="f_medidas"></div>
-    <div class="field"><label>Marcas / n.º de série</label><input id="f_marcas"></div>
+    <div class="field"><label>Marcas</label><input id="f_marcas"></div>
     <div class="row2">
       <div class="field"><label>Part Number (P/N)</label><input id="f_partNumber" placeholder="ex: 65-13456-1"></div>
       <div class="field"><label>Serial Number (S/N)</label><input id="f_serialNumber" placeholder="ex: RM-4471"></div>
     </div>
+    <div class="field"><label>Localização</label><input id="f_localizacao" placeholder="ex: Alpriate, setor 4, prateleira 20"></div>
     <div class="field"><label>Descrição</label><textarea id="f_descricao" rows="3"></textarea></div>
     <div class="field">
       <label>História — o toque humano</label>
@@ -973,6 +1006,7 @@ async function buildFichaPdf(p){
     ['Parceiro', p.Partner], ['Categoria', p.Categoria], ['Materiais', p.Materiais],
     ['Medidas', p.Medidas], ['Marcas / N.º Série', p.Marcas],
     ['Part Number', p.PartNumber], ['Serial Number', p.SerialNumber],
+    ['Localização', p.Localizacao],
     ['Proveniência', p.Proveniencia], ['Estado', p.Estado],
     ['Data Registo', p.DataRegisto], ['Registado por', p.RegistadoPor]
   ];
@@ -1127,6 +1161,7 @@ function openDetail(p) {
     <div class="detail-row"><span class="k">Marcas</span><span>${p.Marcas || '—'}</span></div>
     <div class="detail-row"><span class="k">Part Number</span><span>${p.PartNumber || '—'}</span></div>
     <div class="detail-row"><span class="k">Serial Number</span><span>${p.SerialNumber || '—'}</span></div>
+    ${session ? `<div class="detail-row"><span class="k">Localização</span><span>${p.Localizacao || '—'}</span></div>` : ''}
     <div class="detail-row"><span class="k">Proveniência</span><span>${p.Proveniencia || '—'}</span></div>
     <div class="detail-row"><span class="k">Estado</span><span>${p.Estado || '—'}</span></div>
     <p style="margin-top:14px; font-size:13px; line-height:1.5">${p.Descricao || ''}</p>
@@ -1137,9 +1172,8 @@ function openDetail(p) {
     </div>` : ''}
     ${p.Sinalizado ? `<div class="msg err" style="margin-top:12px">🚩 Sinalizado: ${p.Sinalizado}</div>` : ''}
 
-    <button class="btn" style="margin-top:18px" onclick="openPrintOptions()">🖨 Imprimir ficha + etiqueta</button>
-
     ${session ? `
+    <button class="btn" style="margin-top:18px" onclick="openPrintOptions()">🖨 Imprimir ficha + etiqueta</button>
     <div style="margin-top:18px; padding-top:14px; border-top:1px dashed var(--line)">
       <div class="section-lbl" style="padding:0 0 8px">Curadoria (só visível para membros)</div>
       <div style="display:flex; gap:8px; flex-wrap:wrap">
@@ -1175,6 +1209,7 @@ function editPieceUi(){
   document.getElementById('f_marcas').value = p.Marcas || '';
   document.getElementById('f_partNumber').value = p.PartNumber || '';
   document.getElementById('f_serialNumber').value = p.SerialNumber || '';
+  document.getElementById('f_localizacao').value = p.Localizacao || '';
   document.getElementById('f_descricao').value = p.Descricao || '';
   document.getElementById('f_historia').value = p.Historia || '';
   document.getElementById('f_proveniencia').value = p.Proveniencia || '';
@@ -1705,6 +1740,7 @@ async function submitPiece() {
       marcas: document.getElementById('f_marcas').value,
       partNumber: document.getElementById('f_partNumber').value,
       serialNumber: document.getElementById('f_serialNumber').value,
+      localizacao: document.getElementById('f_localizacao').value,
       descricao: document.getElementById('f_descricao').value,
       historia: document.getElementById('f_historia').value,
       proveniencia: document.getElementById('f_proveniencia').value,
@@ -1715,11 +1751,25 @@ async function submitPiece() {
     const data = await fetchJson_(API_URL, { method: 'POST', body: JSON.stringify(payload) });
     if (!data.ok) throw new Error(data.error);
 
-    msgEl.innerHTML = `<div class="msg ok">${isEditing ? 'Ficha atualizada: ' + objectId : 'Peça registada: ' + data.objectId}</div>`;
+    // Guarda a peça (nova ou editada) para o botão "Imprimir" já poder usá-la
+    currentDetailPiece = {
+      ObjectID: isEditing ? objectId : data.objectId, Partner: partner,
+      Nome: payload.nome, Categoria: payload.categoria, Materiais: payload.materiais,
+      Medidas: payload.medidas, Marcas: payload.marcas, PartNumber: payload.partNumber,
+      SerialNumber: payload.serialNumber, Localizacao: payload.localizacao,
+      Descricao: payload.descricao, Historia: payload.historia,
+      Proveniencia: payload.proveniencia, Estado: payload.estado,
+      ImagemURL: payload.imagemUrl || editingPieceExistingPhotos
+    };
+
+    msgEl.innerHTML = `
+      <div class="msg ok">${isEditing ? 'Ficha atualizada: ' + objectId : 'Peça registada: ' + data.objectId}</div>
+      <button class="btn" style="margin-top:10px" onclick="openPrintOptions()">🖨 Imprimir ficha + etiqueta</button>
+    `;
     uploadedPhotos = [];
     renderPhotoStrip();
     if (!isEditing) {
-      ['f_nome','f_materiais','f_medidas','f_marcas','f_partNumber','f_serialNumber','f_descricao','f_historia','f_proveniencia','f_estado']
+      ['f_nome','f_materiais','f_medidas','f_marcas','f_partNumber','f_serialNumber','f_localizacao','f_descricao','f_historia','f_proveniencia','f_estado']
         .forEach(id => document.getElementById(id).value = '');
     } else {
       setTimeout(() => { hide('formOverlay'); exitEditMode_(); }, 900);
@@ -1750,7 +1800,7 @@ function exitEditMode_(){
   document.getElementById('formTitle').textContent = 'Registar peça';
   document.getElementById('submitBtn').textContent = 'Registar peça';
   document.getElementById('submitBtnTop').textContent = 'Registar peça ⬆';
-  ['f_nome','f_materiais','f_medidas','f_marcas','f_partNumber','f_serialNumber','f_descricao','f_historia','f_proveniencia','f_estado']
+  ['f_nome','f_materiais','f_medidas','f_marcas','f_partNumber','f_serialNumber','f_localizacao','f_descricao','f_historia','f_proveniencia','f_estado']
     .forEach(id => document.getElementById(id).value = '');
   uploadedPhotos = [];
   renderPhotoStrip();
