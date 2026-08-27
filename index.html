@@ -3,12 +3,21 @@
 ============================================================
 MUSEU VAC — Frontend (PWA single-file)
 ============================================================
-VERSÃO:  1.10.0
+VERSÃO:  1.11.0
 GRUPO:   Vintage Aero Club — Museu Digital
-DATA:    2026-08-27 00:00
+DATA:    2026-08-27 20:00
 AUTOR:   Pedro Nunes (com apoio de Claude)
 ------------------------------------------------------------
 HISTÓRICO DE VERSÕES
+1.11.0 2026-08-27 20:00 — (1) loadPieces() passa a enviar email+token
+       da sessão activa ao Code.gs, quando existe — permite ao
+       backend mostrar também peças de parceiros marcados como
+       "não públicas" (coluna PecasPublicas=Não na aba Parceiros)
+       a membros VAC autenticados, mantendo-as escondidas do
+       público anónimo. (2) Novo campo "Peças visíveis ao
+       público" no formulário Gerir Parceiros (Sim/Não),
+       gravado no campo pecasPublicas ao criar/editar parceiro.
+       Exige Code.gs 1.10.0 ou superior.
 1.10.0 2026-08-27 00:00 — (1) Mensagem de sucesso ao registar ou
        editar peça deixou de ser um texto verde no fundo da
        página — passou a popup/modal centrado "REGISTO OK" /
@@ -125,8 +134,8 @@ dois ficheiros sobem juntas quando há mudanças de API entre eles.
   const VAC_LOGO = './logo-vac-color.png'; // ficheiro subido diretamente ao repo Vac-Museu
   const ANAC_LOGO = ''; // colocar URL do logo real da ANAC quando disponível
   const GOOGLE_CLIENT_ID = '363576677824-ivjutejofafic0hdu1bstqr3p9ir1m33.apps.googleusercontent.com';
-  const APP_VERSION = '1.10.0';
-  const APP_BUILD_DATE = '2026-08-27 00:00';
+  const APP_VERSION = '1.11.0';
+  const APP_BUILD_DATE = '2026-08-27 20:00';
 
   // Backend do my.VAC — mesma URL usada no Code.gs (MYVAC_API_URL) para
   // verificar membros. Reaproveitada aqui só para ler o link do Manual.
@@ -633,6 +642,10 @@ dois ficheiros sobem juntas quando há mudanças de API entre eles.
       <label>Mostrar no Museu</label>
       <select id="pf_mostrarNoMuseu"><option value="Sim">Sim</option><option value="Não">Não</option></select>
     </div>
+    <div class="field">
+      <label>Peças visíveis ao público</label>
+      <select id="pf_pecasPublicas"><option value="Sim">Sim — visível a todos</option><option value="Não">Não — só membros VAC vêem</option></select>
+    </div>
     <button class="btn accent" id="partnerSaveBtn" onclick="savePartner()">Guardar Parceiro</button>
     <div id="partnerFormMsg"></div>
   </div>
@@ -814,8 +827,14 @@ async function loadPartners() {
 
 async function loadPieces() {
   const partnerParam = lockedPartner || 'ALL';
+  // Se houver sessão activa, envia email+token — assim o Code.gs sabe que é
+  // um membro VAC e devolve também as peças de parceiros que só querem ficar
+  // visíveis a membros (coluna PecasPublicas=Não na aba Parceiros).
+  const authParams = (session && session.email && session.token)
+    ? `&email=${encodeURIComponent(session.email)}&token=${encodeURIComponent(session.token)}`
+    : '';
   try {
-    const res = await fetch(`${API_URL}?partner=${encodeURIComponent(partnerParam)}`);
+    const res = await fetch(`${API_URL}?partner=${encodeURIComponent(partnerParam)}${authParams}`);
     const data = await res.json();
     if (!data.ok) throw new Error(data.error);
     allPieces = data.pieces;
@@ -1374,6 +1393,8 @@ function openPartnerForm(codigo){
   document.getElementById('pf_infoInstitucional').value = existing?.InfoInstitucional || '';
   document.getElementById('pf_mostrarNoMuseu').value =
     (existing && String(existing.MostrarNoMuseu || '').toLowerCase().trim() !== 'sim') ? 'Não' : 'Sim';
+  document.getElementById('pf_pecasPublicas').value =
+    (existing && String(existing.PecasPublicas || '').toLowerCase().trim() === 'não') ? 'Não' : 'Sim';
   document.getElementById('partnerFormMsg').innerHTML = '';
   show('partnerFormOverlay');
 }
@@ -1396,7 +1417,8 @@ async function savePartner(){
     dominio: document.getElementById('pf_dominio').value,
     contacto: document.getElementById('pf_contacto').value,
     infoInstitucional: document.getElementById('pf_infoInstitucional').value,
-    mostrarNoMuseu: document.getElementById('pf_mostrarNoMuseu').value === 'Sim'
+    mostrarNoMuseu: document.getElementById('pf_mostrarNoMuseu').value === 'Sim',
+    pecasPublicas: document.getElementById('pf_pecasPublicas').value === 'Sim'
   };
 
   try {
