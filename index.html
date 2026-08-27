@@ -3,12 +3,21 @@
 ============================================================
 MUSEU VAC — Frontend (PWA single-file)
 ============================================================
-VERSÃO:  1.9.1
+VERSÃO:  1.10.0
 GRUPO:   Vintage Aero Club — Museu Digital
-DATA:    2026-08-17 15:00
+DATA:    2026-08-27 00:00
 AUTOR:   Pedro Nunes (com apoio de Claude)
 ------------------------------------------------------------
 HISTÓRICO DE VERSÕES
+1.10.0 2026-08-27 00:00 — (1) Mensagem de sucesso ao registar ou
+       editar peça deixou de ser um texto verde no fundo da
+       página — passou a popup/modal centrado "REGISTO OK" /
+       "FICHA ATUALIZADA" com o número em destaque e os botões
+       de imprimir/fechar. (2) Ao editar uma peça e mudar o
+       Parceiro, o frontend passa agora a usar o ObjectID novo
+       devolvido pelo Code.gs (exige Code.gs 1.9.0 ou superior,
+       com a geração automática de novo ObjectID na ação
+       updatePiece quando o parceiro muda).
 1.9.1  2026-08-17 22:00 — Adicionado botão X bem visível (canto
        superior direito) em todos os modais, além da barrinha
        fina que já lá estava (36x4px — alvo de toque/clique
@@ -116,8 +125,8 @@ dois ficheiros sobem juntas quando há mudanças de API entre eles.
   const VAC_LOGO = './logo-vac-color.png'; // ficheiro subido diretamente ao repo Vac-Museu
   const ANAC_LOGO = ''; // colocar URL do logo real da ANAC quando disponível
   const GOOGLE_CLIENT_ID = '363576677824-ivjutejofafic0hdu1bstqr3p9ir1m33.apps.googleusercontent.com';
-  const APP_VERSION = '1.9.1';
-  const APP_BUILD_DATE = '2026-08-17 22:00';
+  const APP_VERSION = '1.10.0';
+  const APP_BUILD_DATE = '2026-08-27 00:00';
 
   // Backend do my.VAC — mesma URL usada no Code.gs (MYVAC_API_URL) para
   // verificar membros. Reaproveitada aqui só para ler o link do Manual.
@@ -707,8 +716,7 @@ dois ficheiros sobem juntas quando há mudanças de API entre eles.
     <div class="field"><label>Categoria</label>
       <select id="f_categoria">
         <option>Motor</option><option>Instrumento</option><option>Aeronave</option>
-<option>Equipamento de Teste</option>
-<option>Documento</option><option>Outro</option>
+        <option>Documento</option><option>Outro</option>
       </select>
     </div>
     <div class="field"><label>Parceiro / Grupo proprietário</label>
@@ -1752,6 +1760,10 @@ async function submitPiece() {
     const data = await fetchJson_(API_URL, { method: 'POST', body: JSON.stringify(payload) });
     if (!data.ok) throw new Error(data.error);
 
+    // Se o Parceiro mudou numa edição, o Code.gs devolve um ObjectID novo
+    // (renumerado na sequência do parceiro certo) — passa a usar-se esse.
+    if (isEditing && data.objectId) objectId = data.objectId;
+
     // Guarda a peça (nova ou editada) para o botão "Imprimir" já poder usá-la
     currentDetailPiece = {
       ObjectID: isEditing ? objectId : data.objectId, Partner: partner,
@@ -1763,10 +1775,8 @@ async function submitPiece() {
       ImagemURL: payload.imagemUrl || editingPieceExistingPhotos
     };
 
-    msgEl.innerHTML = `
-      <div class="msg ok">${isEditing ? 'Ficha atualizada: ' + objectId : 'Peça registada: ' + data.objectId}</div>
-      <button class="btn" style="margin-top:10px" onclick="openPrintOptions()">🖨 Imprimir ficha + etiqueta</button>
-    `;
+    msgEl.innerHTML = '';
+    showRegistoModal_(isEditing ? objectId : data.objectId, isEditing);
     uploadedPhotos = [];
     renderPhotoStrip();
     if (!isEditing) {
@@ -1793,6 +1803,24 @@ async function submitPiece() {
     btn.textContent = isEditing ? 'Guardar Alterações' : 'Registar peça';
     btnTop.textContent = isEditing ? 'Guardar Alterações ⬆' : 'Registar peça ⬆';
   }
+}
+
+// Popup "REGISTO OK" / "FICHA ATUALIZADA" — substitui o texto verde inline
+// que ficava perdido no fundo da página (pedido de utilizador, v1.10.0).
+function showRegistoModal_(objectId, isEditing){
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px;';
+  overlay.innerHTML = `
+    <div style="background:#fff;border-radius:14px;padding:30px 26px;max-width:320px;width:100%;text-align:center;box-shadow:0 8px 30px rgba(0,0,0,.25);">
+      <div style="font-size:44px;line-height:1;margin-bottom:8px;">✅</div>
+      <h3 style="margin:4px 0 2px;font-size:19px;letter-spacing:.5px;color:#1D3C53;font-weight:800;">${isEditing ? 'FICHA ATUALIZADA' : 'REGISTO OK'}</h3>
+      <p style="font-size:15px;color:#444;margin:0 0 20px;">Nº <strong style="color:#CC2027;font-family:monospace;font-size:16px;">${objectId}</strong></p>
+      <button class="btn" style="display:block;width:100%;background:#1D3C53;color:#fff;border:none;border-radius:8px;padding:13px;font-size:15px;font-weight:700;margin-bottom:8px;cursor:pointer;" onclick="this.closest('.registoModalOverlay').remove(); openPrintOptions();">🖨 Imprimir ficha + etiqueta</button>
+      <button style="display:block;width:100%;background:#f0ece2;color:#555;border:none;border-radius:8px;padding:12px;font-size:14px;cursor:pointer;" onclick="this.closest('.registoModalOverlay').remove();">Fechar</button>
+    </div>`;
+  overlay.className = 'registoModalOverlay';
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) document.body.removeChild(overlay); });
+  document.body.appendChild(overlay);
 }
 
 function exitEditMode_(){
