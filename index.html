@@ -3,12 +3,20 @@
 ============================================================
 MUSEU VAC — Frontend (PWA single-file)
 ============================================================
-VERSÃO:  1.13.0
+VERSÃO:  1.13.1
 GRUPO:   Vintage Aero Club — Museu Digital
 DATA:    2026-09-09
 AUTOR:   Pedro Nunes (com apoio de Claude)
 ------------------------------------------------------------
 HISTÓRICO DE VERSÕES
+1.13.1 2026-09-09 — Corrigido: depois do login, o acervo não se
+       recarregava sozinho — a lista mostrada continuava a ser a
+       obtida ANTES do login (sem email/token), por isso peças de
+       parceiros "não públicas" (ex: ANAC) só apareciam a membros
+       depois de um refresh manual à página (F5). loadPieces() passa
+       a ser chamado logo após o login (mostra as peças que faltavam
+       na hora) e logo após o logout (esconde-as de novo, sem
+       precisar de refresh).
 1.13.0 2026-09-09 — Fotos passam a ser guardadas em 2 tamanhos por
        cada imagem: thumb (~500px, para grelhas e listas — carrega
        rápido) e full (~1800px, para o lightbox ao tocar — boa
@@ -153,7 +161,7 @@ dois ficheiros sobem juntas quando há mudanças de API entre eles.
   const VAC_LOGO = './logo-vac-color.png'; // ficheiro subido diretamente ao repo Vac-Museu
   const ANAC_LOGO = ''; // colocar URL do logo real da ANAC quando disponível
   const GOOGLE_CLIENT_ID = '363576677824-ivjutejofafic0hdu1bstqr3p9ir1m33.apps.googleusercontent.com';
-  const APP_VERSION = '1.13.0';
+  const APP_VERSION = '1.13.1';
   const APP_BUILD_DATE = '2026-09-09';
 
   // Backend do my.VAC — mesma URL usada no Code.gs (MYVAC_API_URL) para
@@ -1805,6 +1813,9 @@ function logout(){
   renderHeaderAvatar();
   renderMenuSession();
   hide('menuOverlay');
+  // v1.13.1 — recarrega o acervo sem sessão, para esconder de novo as
+  // peças de parceiros "não públicas" (ex: ANAC) a quem termina sessão.
+  loadPieces();
 }
 
 /* ==============================================================
@@ -1865,6 +1876,10 @@ async function handleCredentialResponse(response) {
     session = { email: data.email, token: data.token, name: payload.name || '', picture: payload.picture || '' };
     localStorage.setItem('vac_museu_session', JSON.stringify(session));
     renderHeaderAvatar();
+    // v1.13.1 — recarrega o acervo já com a sessão activa, para peças de
+    // parceiros "não públicas" (ex: ANAC) aparecerem de imediato, sem
+    // precisar de dar refresh à página depois do login.
+    loadPieces();
     msgEl.innerHTML = `<div class="msg ok">Sessão iniciada como ${data.email}</div>`;
     setTimeout(() => { hide('loginOverlay'); show('formOverlay'); }, 600);
   } catch (err) {
