@@ -2,11 +2,12 @@
   "name": "Museu VAC",
   "short_name": "Museu VAC",
   "description": "Acervo museológico do Vintage Aero Club",
-  "_versao": "1.1.0",
+  "_versao": "1.2.0",
   "_grupo": "Vintage Aero Club — Museu Digital",
-  "_data": "2026-07-10 08:30",
+  "_data": "2026-09-09",
   "_autor": "Pedro Nunes (com apoio de Claude)",
   "_historico": [
+    "1.2.0 2026-09-09 — PM3: adicionados ícones maskable (192/512), logótipo centrado a ~66% do canvas sobre fundo #1D3C53, sem moldura — corrige o ícone a aparecer cada vez mais pequeno em telemóveis Android (o sistema aplica a sua própria máscara ao ícone 'any', e sem uma versão 'maskable' própria acaba a encolher o desenho para caber dentro da zona segura).",
     "1.1.0 2026-07-10 08:30 — Removida entrada SVG dos icons (causava erro no processador de ícones do Chrome por ter @import de fonte externa)",
     "1.0.0 2026-07-06 — Primeira versão: nome, cores, ícones PNG 192/512"
   ],
@@ -28,6 +29,18 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
+    },
+    {
+      "src": "./icon-museu-192-maskable.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "./icon-museu-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }

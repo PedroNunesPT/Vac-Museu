@@ -2,12 +2,21 @@
  * ============================================================
  * MUSEU VAC — Service Worker
  * ============================================================
- * VERSÃO:  2.0.0
+ * VERSÃO:  2.1.0
  * GRUPO:   Vintage Aero Club — Museu Digital
- * DATA:    2026-07-10 18:21
+ * DATA:    2026-09-09
  * AUTOR:   Pedro Nunes (com apoio de Claude)
  * ------------------------------------------------------------
  * HISTÓRICO DE VERSÕES
+ * 2.1.0  2026-09-09 — PM3: CACHE_NAME subiu de museu-vac-v2 para
+ *        museu-vac-v3, para forçar todos os telemóveis a
+ *        descartarem a cache antiga e irem buscar os ícones
+ *        maskable novos (icon-museu-192-maskable.png e
+ *        icon-museu-512-maskable.png), adicionados também à
+ *        lista de estáticos. Sem esta subida de versão, quem já
+ *        tinha a app instalada continuaria a servir os ícones
+ *        antigos da cache local, mesmo depois do manifest.json
+ *        ser publicado.
  * 2.0.0  2026-07-10 00:00 — Corrigido bug grave: chamadas à API
  *        (script.google.com) estavam a ser tratadas como
  *        ficheiros estáticos e ficavam em cache, mostrando dados
@@ -17,12 +26,14 @@
  *        estáticos (ícones/logo) cache-first.
  * ------------------------------------------------------------
  */
-const CACHE_NAME = 'museu-vac-v2';
+const CACHE_NAME = 'museu-vac-v3';
 const STATIC_ASSETS = [
   './manifest.json',
   './icon-museu.svg',
   './icon-museu-192.png',
   './icon-museu-512.png',
+  './icon-museu-192-maskable.png',
+  './icon-museu-512-maskable.png',
   './logo-vac-color.png',
   './icon-my192.png',
   './icon-pos192.png'
