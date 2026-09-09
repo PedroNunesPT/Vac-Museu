@@ -3,12 +3,31 @@
 ============================================================
 MUSEU VAC — Frontend (PWA single-file)
 ============================================================
-VERSÃO:  1.11.0
+VERSÃO:  1.13.0
 GRUPO:   Vintage Aero Club — Museu Digital
-DATA:    2026-08-27 20:00
+DATA:    2026-09-09
 AUTOR:   Pedro Nunes (com apoio de Claude)
 ------------------------------------------------------------
 HISTÓRICO DE VERSÕES
+1.13.0 2026-09-09 — Fotos passam a ser guardadas em 2 tamanhos por
+       cada imagem: thumb (~500px, para grelhas e listas — carrega
+       rápido) e full (~1800px, para o lightbox ao tocar — boa
+       qualidade para ver detalhe/imprimir). Formato por foto:
+       "urlThumb,urlFull" (fotos múltiplas continuam separadas por
+       "|", como antes). Compatível com peças antigas: se a foto
+       gravada não tiver vírgula (formato de sempre), thumb e full
+       apontam para o mesmo URL — não é preciso migrar nada.
+       Novo: toca em qualquer foto da ficha para abrir em ecrã
+       cheio (lightbox), com setas para avançar/recuar quando há
+       mais do que uma foto. Exige Code.gs 1.10.1 ou superior (não
+       muda a API, só o conteúdo do campo ImagemURL).
+1.12.0 2026-09-09 — Categorias deixam de estar fixas no formulário
+       — passam a vir da nova aba dinâmica "Categorias" na Sheet,
+       tal como já acontecia com os Parceiros. Novo botão "🏷 Gerir
+       Categorias" na Curadoria (criar/editar/desativar categorias
+       sem tocar em código). Exige Code.gs 1.11.0 ou superior
+       (novas ações action=categories / addCategory / updateCategory
+       / deleteCategory).
 1.11.0 2026-08-27 20:00 — (1) loadPieces() passa a enviar email+token
        da sessão activa ao Code.gs, quando existe — permite ao
        backend mostrar também peças de parceiros marcados como
@@ -134,8 +153,8 @@ dois ficheiros sobem juntas quando há mudanças de API entre eles.
   const VAC_LOGO = './logo-vac-color.png'; // ficheiro subido diretamente ao repo Vac-Museu
   const ANAC_LOGO = ''; // colocar URL do logo real da ANAC quando disponível
   const GOOGLE_CLIENT_ID = '363576677824-ivjutejofafic0hdu1bstqr3p9ir1m33.apps.googleusercontent.com';
-  const APP_VERSION = '1.11.0';
-  const APP_BUILD_DATE = '2026-08-27 20:00';
+  const APP_VERSION = '1.13.0';
+  const APP_BUILD_DATE = '2026-09-09';
 
   // Backend do my.VAC — mesma URL usada no Code.gs (MYVAC_API_URL) para
   // verificar membros. Reaproveitada aqui só para ler o link do Manual.
@@ -384,7 +403,32 @@ dois ficheiros sobem juntas quando há mudanças de API entre eles.
   .msg{font-size:12px; margin-top:8px; padding:8px 10px; border-radius:6px;}
   .msg.err{background:#fbe4e4; color:var(--red);}
   .msg.ok{background:#e6f0e2; color:var(--green);}
-  .detail-thumb{width:100%; height:180px; border-radius:12px; object-fit:cover; margin-bottom:14px; background:var(--line);}
+  .detail-thumb{width:100%; height:180px; border-radius:12px; object-fit:cover; margin-bottom:14px; background:var(--line); cursor:zoom-in;}
+  .detail-gallery img{ cursor:zoom-in; }
+
+  /* v1.13.0 — Lightbox (zoom em ecrã cheio, toca numa foto da ficha para abrir) */
+  .lightbox{
+    position:fixed; inset:0; z-index:400; background:rgba(10,14,18,.94);
+    display:none; align-items:center; justify-content:center;
+  }
+  .lightbox.show{ display:flex; }
+  .lightbox-img{ max-width:92vw; max-height:82vh; object-fit:contain; border-radius:8px; cursor:default; }
+  .lightbox-x{
+    position:absolute; top:16px; right:16px; width:40px; height:40px; border-radius:50%;
+    background:rgba(255,255,255,.12); color:#fff; border:none; font-size:18px; cursor:pointer;
+  }
+  .lightbox-nav{
+    position:absolute; top:50%; transform:translateY(-50%); width:48px; height:48px; border-radius:50%;
+    background:rgba(255,255,255,.12); color:#fff; border:none; font-size:26px; cursor:pointer; line-height:1;
+  }
+  .lightbox-prev{ left:12px; } .lightbox-next{ right:12px; }
+  .lightbox-counter{
+    position:absolute; bottom:20px; left:0; right:0; text-align:center;
+    color:rgba(255,255,255,.7); font-family:'IBM Plex Mono',monospace; font-size:12px;
+  }
+  @media (max-width:600px){
+    .lightbox-nav{ width:40px; height:40px; font-size:22px; }
+  }
   .detail-row{display:flex; justify-content:space-between; font-size:13px; padding:8px 0; border-bottom:1px dashed var(--line);}
   .detail-row .k{opacity:.55; font-family:'IBM Plex Mono',monospace; font-size:10px; text-transform:uppercase;}
 
@@ -599,13 +643,25 @@ dois ficheiros sobem juntas quando há mudanças de API entre eles.
   </div>
 </div>
 
+<!-- LIGHTBOX — zoom de fotos em ecrã cheio (v1.13.0) -->
+<div class="lightbox" id="lightboxOverlay" onclick="closeLightbox(event)">
+  <button class="lightbox-x" onclick="closeLightbox(event)" aria-label="Fechar">✕</button>
+  <button class="lightbox-nav lightbox-prev" onclick="lightboxNav(event,-1)" aria-label="Foto anterior">‹</button>
+  <img class="lightbox-img" id="lightboxImg" src="" onclick="event.stopPropagation()">
+  <button class="lightbox-nav lightbox-next" onclick="lightboxNav(event,1)" aria-label="Foto seguinte">›</button>
+  <div class="lightbox-counter" id="lightboxCounter"></div>
+</div>
+
 <!-- LISTA DE GESTÃO -->
 <div class="overlay" id="managementOverlay" onclick="closeOverlay(event,'managementOverlay')">
   <div class="sheet" onclick="event.stopPropagation()">
     <button class="sheet-x" onclick="hide('managementOverlay')" aria-label="Fechar">✕</button>
     <button class="sheet-close" onclick="hide('managementOverlay')"></button>
     <h2>Curadoria</h2>
-    <button class="btn" style="margin-bottom:14px" onclick="openPartnersManagement()">🏷 Gerir Parceiros</button>
+    <div style="display:flex; gap:10px; margin-bottom:14px">
+      <button class="btn" style="flex:1" onclick="openPartnersManagement()">🏷 Gerir Parceiros</button>
+      <button class="btn" style="flex:1" onclick="openCategoriesManagement()">📂 Gerir Categorias</button>
+    </div>
     <p style="font-size:12px; opacity:.6; margin-bottom:14px">Todas as peças, incluindo inativas. Toca numa linha para abrir a ficha completa.</p>
     <div id="managementList"></div>
   </div>
@@ -648,6 +704,33 @@ dois ficheiros sobem juntas quando há mudanças de API entre eles.
     </div>
     <button class="btn accent" id="partnerSaveBtn" onclick="savePartner()">Guardar Parceiro</button>
     <div id="partnerFormMsg"></div>
+  </div>
+</div>
+
+<!-- GESTÃO DE CATEGORIAS -->
+<div class="overlay" id="categoriesOverlay" onclick="closeOverlay(event,'categoriesOverlay')">
+  <div class="sheet" onclick="event.stopPropagation()">
+    <button class="sheet-x" onclick="hide('categoriesOverlay')" aria-label="Fechar">✕</button>
+    <button class="sheet-close" onclick="hide('categoriesOverlay')"></button>
+    <h2>Categorias</h2>
+    <button class="btn accent" style="margin-bottom:14px" onclick="openCategoryForm()">+ Nova Categoria</button>
+    <div id="categoriesList"></div>
+  </div>
+</div>
+
+<!-- FORMULÁRIO DE CATEGORIA (novo / editar) -->
+<div class="overlay" id="categoryFormOverlay" onclick="closeOverlay(event,'categoryFormOverlay')">
+  <div class="sheet" onclick="event.stopPropagation()">
+    <button class="sheet-x" onclick="hide('categoryFormOverlay')" aria-label="Fechar">✕</button>
+    <button class="sheet-close" onclick="hide('categoryFormOverlay')"></button>
+    <h2 id="categoryFormTitle">Nova Categoria</h2>
+    <div class="field"><label>Nome</label><input id="cf_nome" placeholder="ex: Instrumentos"></div>
+    <div class="field">
+      <label>Ativa (visível no registo)</label>
+      <select id="cf_ativa"><option value="Sim">Sim</option><option value="Não">Não</option></select>
+    </div>
+    <button class="btn accent" id="categorySaveBtn" onclick="saveCategory()">Guardar Categoria</button>
+    <div id="categoryFormMsg"></div>
   </div>
 </div>
 
@@ -727,10 +810,7 @@ dois ficheiros sobem juntas quando há mudanças de API entre eles.
 
     <div class="field"><label>Nome / título</label><input id="f_nome"></div>
     <div class="field"><label>Categoria</label>
-      <select id="f_categoria">
-        <option>Motor</option><option>Instrumento</option><option>Aeronave</option>
-        <option>Documento</option><option>Outro</option>
-      </select>
+      <select id="f_categoria"><option value="">A carregar categorias...</option></select>
     </div>
     <div class="field"><label>Parceiro / Grupo proprietário</label>
       <select id="f_partner"><option value="">A carregar parceiros...</option></select>
@@ -768,6 +848,8 @@ let lockedPartner = null;           // definido se o hostname for de um parceiro
 let uploadedPhotos = [];
 let editingPieceObjectId = null; // null = a registar nova peça; senão = a editar esta peça
 let editingPieceExistingPhotos = ''; // fotos já existentes (URLs "|"), preservadas ao editar
+let currentDetailPhotos = []; // v1.13.0 — fotos {thumb,full} da peça aberta no detalhe, para o lightbox
+let lightboxIndex = 0; // v1.13.0 — foto actualmente aberta no lightbox
 
 /* ==============================================================
    DETEÇÃO DE PARCEIRO POR HOSTNAME
@@ -822,6 +904,23 @@ async function loadPartners() {
   } catch (err) {
     // Falha a ler a Sheet — fallback mínimo para não bloquear o registo
     select.innerHTML = '<option value="VAC">VAC</option><option value="ANAC">ANAC</option>';
+  }
+}
+
+// v1.12.0 — Categorias dinâmicas, mesmo padrão dos Parceiros.
+async function loadCategories() {
+  const select = document.getElementById('f_categoria');
+  try {
+    const res = await fetch(`${API_URL}?action=categories`);
+    const data = await res.json();
+    if (!data.ok || !data.categories.length) throw new Error(data.error || 'Sem categorias');
+
+    select.innerHTML = data.categories.map(c =>
+      `<option value="${c.Nome}">${c.Nome}</option>`
+    ).join('');
+  } catch (err) {
+    // Falha a ler a Sheet — fallback mínimo para não bloquear o registo
+    select.innerHTML = '<option>Motor</option><option>Instrumento</option><option>Aeronave</option><option>Documento</option><option>Outro</option>';
   }
 }
 
@@ -936,7 +1035,7 @@ function renderGrid() {
   }
 
   grid.innerHTML = list.map(p => {
-    const firstPhoto = (p.ImagemURL || '').split('|')[0];
+    const firstPhoto = (parsePhotos_(p.ImagemURL)[0] || {}).thumb || '';
     return `
     <div class="piece-card ${p.EstadoRegisto === 'Inativo' ? 'inactive' : ''}" onclick='openDetail(${JSON.stringify(p).replace(/'/g,"&apos;")})'>
       <div class="thumb ${firstPhoto ? '' : 'empty'}">
@@ -1070,8 +1169,8 @@ async function buildFichaPdf(p){
 
   // ---------- Foto (se houver) ----------
   if (p.ImagemURL) {
-    const firstPhoto = p.ImagemURL.split('|')[0];
-    const imgData = await urlToDataURL(firstPhoto);
+    const firstPhoto = (parsePhotos_(p.ImagemURL)[0] || {}).full || '';
+    const imgData = firstPhoto ? await urlToDataURL(firstPhoto) : null;
     if (imgData) {
       try {
         const imgH = 45;
@@ -1176,9 +1275,12 @@ function openDetail(p) {
   const isInactive = p.EstadoRegisto === 'Inativo';
   document.getElementById('detailBody').innerHTML = `
     ${p.ImagemURL ? (() => {
-      const photos = p.ImagemURL.split('|').filter(Boolean);
-      if (photos.length <= 1) return `<img class="detail-thumb" src="${photos[0] || ''}" onerror="if(!this.dataset.retried){this.dataset.retried=1;setTimeout(()=>{this.src=this.src.split('?')[0]+'?r='+Date.now();},2500);}">`;
-      return `<div class="detail-gallery">${photos.map(url => `<img src="${url}" onclick="event.stopPropagation()" onerror="if(!this.dataset.retried){this.dataset.retried=1;setTimeout(()=>{this.src=this.src.split('?')[0]+'?r='+Date.now();},2500);}">`).join('')}</div>`;
+      // v1.13.0 — a galeria mostra os thumbs (carregam rápido); tocar em
+      // qualquer foto abre o lightbox em ecrã cheio com a versão full.
+      const photos = parsePhotos_(p.ImagemURL);
+      currentDetailPhotos = photos;
+      if (photos.length <= 1) return `<img class="detail-thumb" src="${photos[0]?.thumb || ''}" onclick="openLightbox(0)" onerror="if(!this.dataset.retried){this.dataset.retried=1;setTimeout(()=>{this.src=this.src.split('?')[0]+'?r='+Date.now();},2500);}">`;
+      return `<div class="detail-gallery">${photos.map((ph, i) => `<img src="${ph.thumb}" onclick="event.stopPropagation();openLightbox(${i})" onerror="if(!this.dataset.retried){this.dataset.retried=1;setTimeout(()=>{this.src=this.src.split('?')[0]+'?r='+Date.now();},2500);}">`).join('')}</div>`;
     })() : ''}
     <div class="oid mono" style="margin-bottom:4px">${p.ObjectID} ${isInactive ? '<span style="color:var(--red)">· INATIVA</span>' : ''}</div>
     <h2>${p.Nome || ''}</h2>
@@ -1449,6 +1551,101 @@ async function deletePartnerUi(codigo){
   } catch (err) { alert('Erro: ' + err.message); }
 }
 
+/* ==============================================================
+   GESTÃO DE CATEGORIAS — CRUD completo (v1.12.0), mesmo padrão
+   dos Parceiros acima.
+   ============================================================== */
+let cachedCategories = [];
+
+async function openCategoriesManagement(){
+  const el = document.getElementById('categoriesList');
+  el.innerHTML = '<div class="empty-state">A carregar...</div>';
+  show('categoriesOverlay');
+  try {
+    const res = await fetch(`${API_URL}?action=categories&all=1`);
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error);
+    cachedCategories = data.categories;
+    renderCategoriesList();
+  } catch (err) {
+    el.innerHTML = `<div class="empty-state">Erro a carregar categorias: ${err.message}</div>`;
+  }
+}
+
+function renderCategoriesList(){
+  const el = document.getElementById('categoriesList');
+  if (!cachedCategories.length) {
+    el.innerHTML = '<div class="empty-state">Sem categorias registadas.</div>';
+    return;
+  }
+  el.innerHTML = cachedCategories.map(c => {
+    const inativa = String(c.Ativa || '').toLowerCase().trim() === 'não';
+    return `
+    <div class="mgmt-row">
+      <div class="info">
+        <div class="oid">${c.Nome} ${inativa ? '<span class="partner-hidden-badge">INATIVA</span>' : ''}</div>
+      </div>
+      <div class="actions">
+        <button onclick='openCategoryForm(${JSON.stringify(c.Nome)})' title="Editar">${svgEdit_()}</button>
+        <button onclick='deleteCategoryUi(${JSON.stringify(c.Nome)})' title="Apagar">${svgTrash_()}</button>
+      </div>
+    </div>
+  `;}).join('');
+}
+
+function openCategoryForm(nome){
+  const existing = nome ? cachedCategories.find(c => c.Nome === nome) : null;
+  document.getElementById('categoryFormTitle').textContent = existing ? `Editar ${existing.Nome}` : 'Nova Categoria';
+  document.getElementById('cf_nome').value = existing ? existing.Nome : '';
+  document.getElementById('cf_nome').dataset.original = existing ? existing.Nome : '';
+  document.getElementById('cf_ativa').value =
+    (existing && String(existing.Ativa || '').toLowerCase().trim() === 'não') ? 'Não' : 'Sim';
+  document.getElementById('categoryFormMsg').innerHTML = '';
+  show('categoryFormOverlay');
+}
+
+async function saveCategory(){
+  const btn = document.getElementById('categorySaveBtn');
+  const msgEl = document.getElementById('categoryFormMsg');
+  const nomeInput = document.getElementById('cf_nome');
+  const nomeAtual = nomeInput.dataset.original || '';
+  const nomeNovo = nomeInput.value.trim();
+  if (!nomeNovo) { msgEl.innerHTML = '<div class="msg err">Nome é obrigatório</div>'; return; }
+
+  btn.disabled = true; btn.textContent = 'A guardar...';
+  const isEditing = !!nomeAtual;
+  const payload = isEditing
+    ? { action: 'updateCategory', ...session, nomeAtual, nomeNovo, ativa: document.getElementById('cf_ativa').value === 'Sim' }
+    : { action: 'addCategory', ...session, nome: nomeNovo, ativa: document.getElementById('cf_ativa').value === 'Sim' };
+
+  try {
+    const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify(payload) });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error);
+    hide('categoryFormOverlay');
+    await openCategoriesManagement(); // refresca a lista
+    loadCategories(); // refresca o <select> do registo também
+  } catch (err) {
+    msgEl.innerHTML = `<div class="msg err">${err.message}</div>`;
+  } finally {
+    btn.disabled = false; btn.textContent = 'Guardar Categoria';
+  }
+}
+
+async function deleteCategoryUi(nome){
+  if (!confirm(`Apagar a categoria "${nome}"? Peças já registadas com esta categoria não são afetadas, mas deixa de aparecer nas opções de registo.`)) return;
+  try {
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'deleteCategory', ...session, nome })
+    });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error);
+    await openCategoriesManagement();
+    loadCategories();
+  } catch (err) { alert('Erro: ' + err.message); }
+}
+
 function renderManagementList(){
   const el = document.getElementById('managementList');
   if (!allPieces.length) {
@@ -1456,7 +1653,7 @@ function renderManagementList(){
     return;
   }
   el.innerHTML = allPieces.map((p, i) => {
-    const firstPhoto = (p.ImagemURL || '').split('|')[0];
+    const firstPhoto = (parsePhotos_(p.ImagemURL)[0] || {}).thumb || '';
     const isInactive = p.EstadoRegisto === 'Inativo';
     return `
     <div class="mgmt-row ${isInactive ? 'inactive' : ''}">
@@ -1534,6 +1731,46 @@ function setupSwipeTabs(){
 function show(id){ document.getElementById(id).classList.add('show'); }
 function hide(id){ document.getElementById(id).classList.remove('show'); }
 function closeOverlay(e,id){ if(e.target.id===id) hide(id); }
+
+/* ==============================================================
+   LIGHTBOX — zoom de fotos em ecrã cheio (v1.13.0)
+   currentDetailPhotos é preenchido em openDetail() com {thumb,full}
+   ============================================================== */
+function openLightbox(index){
+  if (!currentDetailPhotos.length) return;
+  lightboxIndex = index;
+  renderLightbox_();
+  document.getElementById('lightboxOverlay').classList.add('show');
+}
+
+function closeLightbox(e){
+  // Fecha ao tocar no fundo escuro ou no X — nunca ao tocar na própria foto
+  if (e && e.target && (e.target.id === 'lightboxImg')) return;
+  document.getElementById('lightboxOverlay').classList.remove('show');
+}
+
+function lightboxNav(e, dir){
+  e.stopPropagation();
+  const n = currentDetailPhotos.length;
+  lightboxIndex = (lightboxIndex + dir + n) % n;
+  renderLightbox_();
+}
+
+function renderLightbox_(){
+  const photo = currentDetailPhotos[lightboxIndex];
+  if (!photo) return;
+  document.getElementById('lightboxImg').src = photo.full || photo.thumb || '';
+  const n = currentDetailPhotos.length;
+  const counter = document.getElementById('lightboxCounter');
+  const nav = document.querySelectorAll('.lightbox-nav');
+  if (n > 1) {
+    counter.textContent = `${lightboxIndex + 1} / ${n}`;
+    nav.forEach(b => b.style.display = 'flex');
+  } else {
+    counter.textContent = '';
+    nav.forEach(b => b.style.display = 'none');
+  }
+}
 function openLogin(){ initGoogleSignIn(); show('loginOverlay'); }
 function openMenu(){ renderMenuSession(); document.getElementById('appVersionLabel').textContent = 'v' + APP_VERSION + ' · ' + APP_BUILD_DATE; show('menuOverlay'); }
 
@@ -1641,20 +1878,42 @@ window.addEventListener('load', initGoogleSignIn);
    UPLOAD DE IMAGENS — várias fotos por peça, comprime cada uma
    no cliente antes de enviar. uploadedPhotos = [{base64, dataUrl}]
    ============================================================== */
+// v1.13.0 — Cada foto pode vir gravada como "urlThumb,urlFull" (novo
+// formato) ou como um único URL isolado (peças registadas antes da
+// v1.13.0) — nesse caso thumb e full apontam para o mesmo URL, para não
+// ser preciso migrar nada nas peças antigas.
+function parsePhotos_(imagemUrl) {
+  return (imagemUrl || '').split('|').filter(Boolean).map(entry => {
+    const [thumb, full] = entry.split(',');
+    return { thumb: thumb || '', full: full || thumb || '' };
+  });
+}
+
+// v1.13.0 — Redimensiona a imagem já carregada num <img> para uma largura
+// máxima, devolvendo {base64, dataUrl}. Usado duas vezes por foto (thumb
+// e full), para não repetir a leitura do ficheiro.
+function resizeImage_(img, maxW, quality){
+  const scale = Math.min(1, maxW / img.width);
+  const canvas = document.createElement('canvas');
+  canvas.width = img.width * scale;
+  canvas.height = img.height * scale;
+  canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+  const dataUrl = canvas.toDataURL('image/jpeg', quality);
+  return { base64: dataUrl.split(',')[1], dataUrl };
+}
+
+// v1.13.0 — Gera as duas versões de cada foto a partir do mesmo ficheiro:
+// thumb (~500px, para grelhas/listas) e full (~1800px, para o lightbox e
+// para o PDF). Devolve { thumb:{base64,dataUrl}, full:{base64,dataUrl} }.
 function compressFile_(file){
   return new Promise((resolve) => {
     const reader = new FileReader();
     reader.onload = e => {
       const img = new Image();
       img.onload = () => {
-        const maxW = 1280;
-        const scale = Math.min(1, maxW / img.width);
-        const canvas = document.createElement('canvas');
-        canvas.width = img.width * scale;
-        canvas.height = img.height * scale;
-        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
-        resolve({ base64: dataUrl.split(',')[1], dataUrl });
+        const thumb = resizeImage_(img, 500, 0.78);
+        const full = resizeImage_(img, 1800, 0.82);
+        resolve({ thumb, full });
       };
       img.src = e.target.result;
     };
@@ -1674,9 +1933,11 @@ async function handleFiles(evt){
 
 function renderPhotoStrip(){
   const el = document.getElementById('photoStrip');
+  // A tira de pré-visualização mostra o thumb (mais leve) — o full só é
+  // usado depois de enviado, no lightbox e no PDF.
   el.innerHTML = uploadedPhotos.map((p, i) => `
     <div class="photo-thumb">
-      <img src="${p.dataUrl}">
+      <img src="${p.thumb.dataUrl}">
       <button type="button" class="rm" onclick="removePhoto(${i})">✕</button>
     </div>
   `).join('');
@@ -1744,18 +2005,31 @@ async function submitPiece() {
       objectId = reserveData.objectId;
     }
 
+    // v1.13.0 — cada foto sobe em 2 tamanhos (thumb + full), 2 chamadas ao
+    // uploadImage por foto. Guarda-se "urlThumb,urlFull" nesta entrada.
     const urls = [];
     for (let i = 0; i < uploadedPhotos.length; i++) {
-      showLoader('A processar foto', `Imagem ${i + 1} de ${uploadedPhotos.length}...`);
-      const upData = await fetchJson_(API_URL, {
+      showLoader('A processar foto', `Imagem ${i + 1} de ${uploadedPhotos.length} (thumb)...`);
+      const upThumb = await fetchJson_(API_URL, {
         method: 'POST',
         body: JSON.stringify({
           action: 'uploadImage', ...session, objectId,
-          base64: uploadedPhotos[i].base64, filename: `foto_${i + 1}.jpg`
+          base64: uploadedPhotos[i].thumb.base64, filename: `foto_${i + 1}_thumb.jpg`
         })
       });
-      if (!upData.ok) throw new Error(upData.error);
-      urls.push(upData.url);
+      if (!upThumb.ok) throw new Error(upThumb.error);
+
+      showLoader('A processar foto', `Imagem ${i + 1} de ${uploadedPhotos.length} (full)...`);
+      const upFull = await fetchJson_(API_URL, {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'uploadImage', ...session, objectId,
+          base64: uploadedPhotos[i].full.base64, filename: `foto_${i + 1}_full.jpg`
+        })
+      });
+      if (!upFull.ok) throw new Error(upFull.error);
+
+      urls.push(`${upThumb.url},${upFull.url}`);
     }
     // Ao editar, as fotos novas juntam-se às já existentes (não as substitui);
     // se não houver fotos novas nem antigas, não manda o campo (não apaga nada por engano)
@@ -1958,6 +2232,7 @@ function setupSwipeToClose(){
   setupSwipeTabs();
   showLoader('A sincronizar', 'A carregar o acervo...');
   loadPartners();
+  loadCategories();
   loadPieces().finally(() => { hideLoader(); checkDeepLinkPeca_(); });
 
   if ('serviceWorker' in navigator) {
