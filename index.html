@@ -3,12 +3,29 @@
 ============================================================
 MUSEU VAC — Frontend (PWA single-file)
 ============================================================
-VERSÃO:  1.13.1
+VERSÃO:  1.15.0
 GRUPO:   Vintage Aero Club — Museu Digital
-DATA:    2026-09-09
+DATA:    2026-11-28 16:55
 AUTOR:   Pedro Nunes (com apoio de Claude)
 ------------------------------------------------------------
 HISTÓRICO DE VERSÕES
+1.15.0 2026-11-28 16:55 — (2) Sessão expirada deixa de ficar "pendurada":
+       o ecrã passa a verificar a validade do token (24h) ao abrir a app,
+       ao voltar a ela e de minuto a minuto; se já expirou, termina a
+       sessão sozinho (esconde o que é só de membros e recarrega o
+       acervo). Se uma acção falhar com "sessão inválida", termina a
+       sessão, abre o login e avisa. (1) PM5: Documentos e Intervenções por peça.
+       A ficha da peça passa a ter duas secções novas: "Documentos"
+       (manuais, certificados, fotos históricas — ficheiro carregado
+       para o Drive do clube ou link colado) e "Histórico de
+       intervenções" (linha do tempo, mais recente primeiro:
+       reparação, restauro, limpeza, inspeção). Botões "+ Documento"
+       e "+ Intervenção" só para membros com sessão. As intervenções
+       só se acrescentam (nunca se editam nem apagam); um documento
+       pode ser retirado da lista (o ficheiro fica no Drive). Quem
+       vê é igual à peça: se a peça é pública, estas secções também.
+       Ao registar uma intervenção pode actualizar-se o Estado de
+       conservação da peça. Exige Code.gs 1.15.0 ou superior.
 1.13.1 2026-09-09 — Corrigido: depois do login, o acervo não se
        recarregava sozinho — a lista mostrada continuava a ser a
        obtida ANTES do login (sem email/token), por isso peças de
@@ -161,8 +178,8 @@ dois ficheiros sobem juntas quando há mudanças de API entre eles.
   const VAC_LOGO = './logo-vac-color.png'; // ficheiro subido diretamente ao repo Vac-Museu
   const ANAC_LOGO = ''; // colocar URL do logo real da ANAC quando disponível
   const GOOGLE_CLIENT_ID = '363576677824-ivjutejofafic0hdu1bstqr3p9ir1m33.apps.googleusercontent.com';
-  const APP_VERSION = '1.13.1';
-  const APP_BUILD_DATE = '2026-09-09';
+  const APP_VERSION = '1.15.0';
+  const APP_BUILD_DATE = '2026-11-28 16:55';
 
   // Backend do my.VAC — mesma URL usada no Code.gs (MYVAC_API_URL) para
   // verificar membros. Reaproveitada aqui só para ler o link do Manual.
@@ -389,6 +406,26 @@ dois ficheiros sobem juntas quando há mudanças de API entre eles.
   }
   .detail-gallery{ display:flex; gap:8px; overflow-x:auto; margin-bottom:14px; }
   .detail-gallery img{ width:120px; height:120px; object-fit:cover; border-radius:10px; flex-shrink:0; }
+  /* PM5 — Documentos e Intervenções */
+  .extras-sec{ margin-top:18px; padding-top:14px; border-top:1px dashed var(--line); }
+  .extras-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+  .extras-head .lbl{ font-size:10px; letter-spacing:.14em; text-transform:uppercase; font-weight:700; color:var(--accent); }
+  .extras-head .cnt{ font-weight:400; opacity:.7; }
+  .extras-add{ background:transparent; border:1px solid var(--accent); color:var(--accent); border-radius:16px; padding:4px 11px; font-size:12px; font-weight:600; cursor:pointer; }
+  .doc-row{ display:flex; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid var(--line); }
+  .doc-row .ico{ width:34px; height:34px; border-radius:8px; background:var(--bg); display:flex; align-items:center; justify-content:center; font-size:17px; flex-shrink:0; }
+  .doc-row .inf{ flex:1; min-width:0; }
+  .doc-row .tit{ font-size:13px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .doc-row .sub{ font-size:11px; opacity:.65; }
+  .doc-row a.open, .doc-row button.rm{ background:none; border:none; font-size:16px; cursor:pointer; text-decoration:none; color:var(--ink); padding:4px 6px; }
+  .tl{ position:relative; margin-left:6px; padding-left:16px; border-left:2px solid var(--line); }
+  .tl-item{ position:relative; padding-bottom:14px; }
+  .tl-item::before{ content:''; position:absolute; left:-23px; top:3px; width:10px; height:10px; border-radius:50%; background:var(--accent); border:2px solid var(--panel); }
+  .tl-item .when{ font-size:11px; opacity:.7; }
+  .tl-item .tag{ display:inline-block; font-size:10px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--accent); border:1px solid var(--accent); border-radius:10px; padding:1px 7px; margin-left:6px; }
+  .tl-item .desc{ font-size:13px; line-height:1.45; margin-top:3px; }
+  .tl-item .who{ font-size:11px; opacity:.65; margin-top:2px; }
+  .extras-empty{ font-size:12px; opacity:.6; padding:4px 0 8px; }
   .mgmt-row{
     display:flex; align-items:center; gap:10px; padding:10px; margin-bottom:8px;
     background:var(--panel); border-radius:10px; border:1px solid var(--line); cursor:pointer;
@@ -648,6 +685,47 @@ dois ficheiros sobem juntas quando há mudanças de API entre eles.
     <button class="sheet-x" onclick="hide('detailOverlay')" aria-label="Fechar">✕</button>
     <button class="sheet-close" onclick="hide('detailOverlay')"></button>
     <div id="detailBody"></div>
+  </div>
+</div>
+
+<!-- PM5 — NOVO DOCUMENTO -->
+<div class="overlay" id="docFormOverlay" onclick="closeOverlay(event,'docFormOverlay')">
+  <div class="sheet" onclick="event.stopPropagation()">
+    <button class="sheet-x" onclick="hide('docFormOverlay')" aria-label="Fechar">✕</button>
+    <button class="sheet-close" onclick="hide('docFormOverlay')"></button>
+    <h2>Novo documento</h2>
+    <div class="field"><label>Tipo</label>
+      <select id="df_tipo">
+        <option>Manual</option><option>Certificado</option><option>Foto histórica</option><option>Outro</option>
+      </select>
+    </div>
+    <div class="field"><label>Título</label><input id="df_titulo" placeholder="ex: Manual de utilização"></div>
+    <div class="field"><label>Data</label><input id="df_data" type="date"></div>
+    <div class="field"><label>Carregar ficheiro (máx. 5 MB)</label><input id="df_file" type="file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx,.txt"></div>
+    <div class="field"><label>ou colar link (Drive, etc.) — para ficheiros grandes</label><input id="df_url" placeholder="https://..."></div>
+    <button class="btn accent" id="docSaveBtn" onclick="saveDocumento()">Guardar documento</button>
+    <div id="docFormMsg"></div>
+  </div>
+</div>
+
+<!-- PM5 — NOVA INTERVENÇÃO -->
+<div class="overlay" id="intFormOverlay" onclick="closeOverlay(event,'intFormOverlay')">
+  <div class="sheet" onclick="event.stopPropagation()">
+    <button class="sheet-x" onclick="hide('intFormOverlay')" aria-label="Fechar">✕</button>
+    <button class="sheet-close" onclick="hide('intFormOverlay')"></button>
+    <h2>Nova intervenção</h2>
+    <div class="field"><label>Data</label><input id="if_data" type="date"></div>
+    <div class="field"><label>Tipo</label>
+      <select id="if_tipo">
+        <option>Reparação</option><option>Restauro</option><option>Limpeza</option><option>Inspeção</option>
+      </select>
+    </div>
+    <div class="field"><label>O que foi feito</label><textarea id="if_desc" rows="4" placeholder="ex: Reparado o botão do volume"></textarea></div>
+    <div class="field"><label>Feito por</label><input id="if_quem" placeholder="Nome (se vazio, fica o teu email)"></div>
+    <div class="field"><label>Novo estado de conservação (opcional)</label><input id="if_estado" placeholder="Deixa vazio para não alterar"></div>
+    <p style="font-size:11px; opacity:.7; margin:0 0 10px">As intervenções ficam no histórico e não se podem editar nem apagar depois de registadas.</p>
+    <button class="btn accent" id="intSaveBtn" onclick="saveIntervencao()">Registar intervenção</button>
+    <div id="intFormMsg"></div>
   </div>
 </div>
 
@@ -1309,6 +1387,7 @@ function openDetail(p) {
       <p class="story-text">${p.Historia}</p>
     </div>` : ''}
     ${p.Sinalizado ? `<div class="msg err" style="margin-top:12px">🚩 Sinalizado: ${p.Sinalizado}</div>` : ''}
+    <div id="extrasBox"></div>
 
     ${session ? `
     <button class="btn" style="margin-top:18px" onclick="openPrintOptions()">🖨 Imprimir ficha + etiqueta</button>
@@ -1323,6 +1402,7 @@ function openDetail(p) {
     </div>` : ''}
   `;
   show('detailOverlay');
+  loadExtras_(p.ObjectID);
 }
 
 /* ==============================================================
@@ -1379,7 +1459,7 @@ async function flagPieceUi(piece){
     hide('detailOverlay');
     await loadPieces();
     if (document.getElementById('managementOverlay').classList.contains('show')) renderManagementList();
-  } catch (err) { alert('Erro: ' + err.message); }
+  } catch (err) { erroUi_(err); }
 }
 
 async function togglePieceStatusUi(piece){
@@ -1399,7 +1479,7 @@ async function togglePieceStatusUi(piece){
     hide('detailOverlay');
     await loadPieces();
     if (document.getElementById('managementOverlay').classList.contains('show')) renderManagementList();
-  } catch (err) { alert('Erro: ' + err.message); }
+  } catch (err) { erroUi_(err); }
 }
 
 async function deletePieceUi(piece){
@@ -1416,7 +1496,7 @@ async function deletePieceUi(piece){
     hide('detailOverlay');
     await loadPieces();
     if (document.getElementById('managementOverlay').classList.contains('show')) renderManagementList();
-  } catch (err) { alert('Erro: ' + err.message); }
+  } catch (err) { erroUi_(err); }
 }
 
 /* ==============================================================
@@ -1556,7 +1636,7 @@ async function deletePartnerUi(codigo){
     if (!data.ok) throw new Error(data.error);
     await openPartnersManagement();
     loadPartners();
-  } catch (err) { alert('Erro: ' + err.message); }
+  } catch (err) { erroUi_(err); }
 }
 
 /* ==============================================================
@@ -1651,7 +1731,7 @@ async function deleteCategoryUi(nome){
     if (!data.ok) throw new Error(data.error);
     await openCategoriesManagement();
     loadCategories();
-  } catch (err) { alert('Erro: ' + err.message); }
+  } catch (err) { erroUi_(err); }
 }
 
 function renderManagementList(){
@@ -1807,6 +1887,43 @@ function renderMenuSession(){
   logoutBtn.style.display = 'block';
 }
 
+/* ==============================================================
+   SESSÃO — verificação de validade no próprio ecrã (v1.14.0)
+   O token tem validade de 24h (payload "email|expiry" em base64).
+   Se já passou, terminamos a sessão sozinhos em vez de deixar o
+   utilizador a tentar acções que vão falhar com "sessão inválida".
+   ============================================================== */
+function sessionExpired_(){
+  if (!session || !session.token) return false;
+  try {
+    const b64 = String(session.token).split('.')[0].replace(/-/g, '+').replace(/_/g, '/');
+    const payload = atob(b64 + '='.repeat((4 - b64.length % 4) % 4));
+    const exp = parseInt(payload.substring(payload.lastIndexOf('|') + 1), 10);
+    return !isNaN(exp) && Date.now() > exp;
+  } catch (e) { return false; }
+}
+
+// Termina a sessão (limpa, esconde o que é só de membros e recarrega o acervo)
+function expireSession_(){
+  if (!session) return;
+  logout();
+}
+
+// Erro numa acção: se foi sessão expirada, termina sessão e pede novo login
+function erroUi_(err){
+  if (/sessão inválida/i.test((err && err.message) || '')) {
+    hide('detailOverlay');
+    expireSession_();
+    openLogin();
+    alert('A tua sessão expirou. Entra outra vez para continuar.');
+  } else {
+    alert('Erro: ' + (err && err.message));
+  }
+}
+
+document.addEventListener('visibilitychange', () => { if (!document.hidden && sessionExpired_()) expireSession_(); });
+setInterval(() => { if (sessionExpired_()) expireSession_(); }, 60000);
+
 function logout(){
   session = null;
   localStorage.removeItem('vac_museu_session');
@@ -1961,6 +2078,219 @@ function renderPhotoStrip(){
 function removePhoto(i){
   uploadedPhotos.splice(i, 1);
   renderPhotoStrip();
+}
+
+/* ==============================================================
+   PM5 — DOCUMENTOS E INTERVENÇÕES POR PEÇA
+   ============================================================== */
+let extrasCache_ = { objectId: null, documentos: [], intervencoes: [] };
+
+function escX_(v){
+  return String(v == null ? '' : v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function fmtDataPt_(iso){
+  const m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : (iso || '');
+}
+
+function hojeIso_(){
+  const d = new Date();
+  const z = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`;
+}
+
+function iconeDoc_(tipo){
+  return ({ 'Manual': '📘', 'Certificado': '📜', 'Foto histórica': '🖼', 'Outro': '📄' })[tipo] || '📄';
+}
+
+async function loadExtras_(objectId){
+  const box = document.getElementById('extrasBox');
+  if (!box) return;
+  box.innerHTML = '<div class="extras-empty">A carregar documentos e histórico…</div>';
+  const authParams = (session && session.email && session.token)
+    ? `&email=${encodeURIComponent(session.email)}&token=${encodeURIComponent(session.token)}`
+    : '';
+  try {
+    const data = await fetchJson_(`${API_URL}?action=pieceExtras&objectId=${encodeURIComponent(objectId)}${authParams}`);
+    if (!data.ok) throw new Error(data.error || 'Erro');
+    extrasCache_ = { objectId, documentos: data.documentos || [], intervencoes: data.intervencoes || [] };
+  } catch (err) {
+    // Backend antigo (sem a acção) ou rede em baixo: a ficha continua a funcionar sem as secções
+    box.innerHTML = '';
+    return;
+  }
+  // Se entretanto se abriu outra peça, não escreve por cima
+  if (!currentDetailPiece || currentDetailPiece.ObjectID !== objectId) return;
+  renderExtras_();
+}
+
+function renderExtras_(){
+  const box = document.getElementById('extrasBox');
+  if (!box) return;
+  const { documentos, intervencoes } = extrasCache_;
+  const isMember = !!session;
+  // Visitante anónimo: só mostra a secção se tiver conteúdo
+  const showDocs = isMember || documentos.length;
+  const showInts = isMember || intervencoes.length;
+
+  let html = '';
+  if (showDocs) {
+    html += `<div class="extras-sec">
+      <div class="extras-head">
+        <span class="lbl">Documentos <span class="cnt">(${documentos.length})</span></span>
+        ${isMember ? `<button class="extras-add" onclick="openDocForm()">+ Documento</button>` : ''}
+      </div>
+      ${documentos.length ? documentos.map((d, i) => `
+        <div class="doc-row">
+          <div class="ico">${iconeDoc_(d.tipo)}</div>
+          <div class="inf">
+            <div class="tit">${escX_(d.titulo)}</div>
+            <div class="sub">${escX_(d.tipo)}${d.data ? ' · ' + fmtDataPt_(d.data) : ''}</div>
+          </div>
+          <a class="open" href="${escX_(d.url)}" target="_blank" rel="noopener" aria-label="Abrir">↗</a>
+          ${isMember ? `<button class="rm" onclick="deleteDocumentoUi(${i})" aria-label="Retirar da lista">✕</button>` : ''}
+        </div>`).join('') : '<div class="extras-empty">Ainda sem documentos.</div>'}
+    </div>`;
+  }
+  if (showInts) {
+    html += `<div class="extras-sec">
+      <div class="extras-head">
+        <span class="lbl">Histórico de intervenções <span class="cnt">(${intervencoes.length})</span></span>
+        ${isMember ? `<button class="extras-add" onclick="openIntForm()">+ Intervenção</button>` : ''}
+      </div>
+      ${intervencoes.length ? `<div class="tl">${intervencoes.map(x => `
+        <div class="tl-item">
+          <div class="when">${fmtDataPt_(x.data)}<span class="tag">${escX_(x.tipo)}</span></div>
+          <div class="desc">${escX_(x.descricao)}</div>
+          ${x.feitoPor ? `<div class="who">Feito por ${escX_(x.feitoPor)}</div>` : ''}
+        </div>`).join('')}</div>` : '<div class="extras-empty">Ainda sem intervenções registadas.</div>'}
+    </div>`;
+  }
+  box.innerHTML = html;
+}
+
+// ---------- Documento ----------
+function openDocForm(){
+  document.getElementById('df_tipo').value = 'Manual';
+  document.getElementById('df_titulo').value = '';
+  document.getElementById('df_data').value = hojeIso_();
+  document.getElementById('df_file').value = '';
+  document.getElementById('df_url').value = '';
+  document.getElementById('docFormMsg').innerHTML = '';
+  show('docFormOverlay');
+}
+
+function lerFicheiroBase64_(file){
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result).split(',')[1] || '');
+    r.onerror = () => reject(new Error('Não foi possível ler o ficheiro'));
+    r.readAsDataURL(file);
+  });
+}
+
+async function saveDocumento(){
+  const p = currentDetailPiece;
+  if (!p || !session) return;
+  const btn = document.getElementById('docSaveBtn');
+  const msg = document.getElementById('docFormMsg');
+  const titulo = document.getElementById('df_titulo').value.trim();
+  const url = document.getElementById('df_url').value.trim();
+  const file = document.getElementById('df_file').files[0];
+  if (!titulo) { msg.innerHTML = '<div class="msg err">Indica o título.</div>'; return; }
+  if (!file && !url) { msg.innerHTML = '<div class="msg err">Carrega um ficheiro ou cola um link.</div>'; return; }
+  if (file && file.size > 5 * 1024 * 1024) {
+    msg.innerHTML = '<div class="msg err">Ficheiro com mais de 5 MB. Carrega-o no Drive e cola o link.</div>'; return;
+  }
+
+  btn.disabled = true; btn.textContent = 'A guardar...';
+  msg.innerHTML = '';
+  try {
+    const payload = {
+      action: 'addDocument', ...session, objectId: p.ObjectID,
+      tipo: document.getElementById('df_tipo').value, titulo,
+      data: document.getElementById('df_data').value
+    };
+    if (file) {
+      payload.base64 = await lerFicheiroBase64_(file);
+      payload.filename = file.name;
+      payload.mimeType = file.type || 'application/octet-stream';
+    } else {
+      payload.url = url;
+    }
+    const data = await fetchJson_(API_URL, { method: 'POST', body: JSON.stringify(payload) });
+    if (!data.ok) throw new Error(data.error);
+    hide('docFormOverlay');
+    await loadExtras_(p.ObjectID);
+  } catch (err) {
+    if (/sessão inválida/i.test(err.message || '')) { hide('docFormOverlay'); erroUi_(err); }
+    else msg.innerHTML = `<div class="msg err">${escX_(err.message)}</div>`;
+  } finally {
+    btn.disabled = false; btn.textContent = 'Guardar documento';
+  }
+}
+
+async function deleteDocumentoUi(i){
+  const d = extrasCache_.documentos[i];
+  const p = currentDetailPiece;
+  if (!d || !p || !session) return;
+  if (!confirm(`Retirar "${d.titulo}" da lista de documentos desta peça? O ficheiro continua guardado no Drive.`)) return;
+  try {
+    const data = await fetchJson_(API_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'deleteDocument', ...session, objectId: p.ObjectID, url: d.url })
+    });
+    if (!data.ok) throw new Error(data.error);
+    await loadExtras_(p.ObjectID);
+  } catch (err) { erroUi_(err); }
+}
+
+// ---------- Intervenção ----------
+function openIntForm(){
+  document.getElementById('if_data').value = hojeIso_();
+  document.getElementById('if_tipo').value = 'Reparação';
+  document.getElementById('if_desc').value = '';
+  document.getElementById('if_quem').value = '';
+  document.getElementById('if_estado').value = '';
+  document.getElementById('intFormMsg').innerHTML = '';
+  show('intFormOverlay');
+}
+
+async function saveIntervencao(){
+  const p = currentDetailPiece;
+  if (!p || !session) return;
+  const btn = document.getElementById('intSaveBtn');
+  const msg = document.getElementById('intFormMsg');
+  const descricao = document.getElementById('if_desc').value.trim();
+  if (!descricao) { msg.innerHTML = '<div class="msg err">Descreve o que foi feito.</div>'; return; }
+
+  btn.disabled = true; btn.textContent = 'A registar...';
+  msg.innerHTML = '';
+  try {
+    const estado = document.getElementById('if_estado').value.trim();
+    const data = await fetchJson_(API_URL, {
+      method: 'POST',
+      body: JSON.stringify({
+        action: 'addIntervention', ...session, objectId: p.ObjectID,
+        data: document.getElementById('if_data').value,
+        tipo: document.getElementById('if_tipo').value,
+        descricao,
+        feitoPor: document.getElementById('if_quem').value.trim(),
+        estado
+      })
+    });
+    if (!data.ok) throw new Error(data.error);
+    hide('intFormOverlay');
+    if (estado) { p.Estado = estado; loadPieces(); } // estado de conservação mudou
+    await loadExtras_(p.ObjectID);
+    if (estado) openDetail(p); // refresca a linha "Estado" da ficha
+  } catch (err) {
+    if (/sessão inválida/i.test(err.message || '')) { hide('intFormOverlay'); erroUi_(err); }
+    else msg.innerHTML = `<div class="msg err">${escX_(err.message)}</div>`;
+  } finally {
+    btn.disabled = false; btn.textContent = 'Registar intervenção';
+  }
 }
 
 /* ==============================================================
@@ -2238,6 +2568,7 @@ function setupSwipeToClose(){
   });
 }
 (function init() {
+  if (sessionExpired_()) { session = null; localStorage.removeItem('vac_museu_session'); }
   lockedPartner = detectPartner();
   applyTheme(lockedPartner || 'VAC');
   if (lockedPartner) currentPartnerFilter = lockedPartner;
